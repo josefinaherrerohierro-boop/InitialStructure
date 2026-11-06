@@ -26,3 +26,10 @@ class ForbiddenError(AppError):
 class ConflictError(AppError):
     status_code = 409
     message = "Conflict"
+
+
+class UnprocessableError(AppError):
+    """Datos con formato válido pero que no cumplen una regla de negocio."""
+
+    status_code = 422
+    message = "Datos inválidos"

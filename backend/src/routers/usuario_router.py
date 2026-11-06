@@ -3,9 +3,11 @@ from sqlalchemy.orm import Session
 
 from src.db.connection import get_db
 from src.db.models.usuario_model import Usuario
+from src.dtos.servidor_dto import ServidorResponseDTO
 from src.dtos.usuario_dto import CreateUsuarioDTO, UpdateUsuarioDTO, UsuarioResponseDTO
 from src.middlewares.auth_middleware import get_current_user
 from src.schemas.usuario_schema import CreateUsuarioSchema, UpdateUsuarioSchema
+from src.services.servidor_service import ServidorService
 from src.services.usuario_service import UsuarioService
 
 router = APIRouter(prefix="/usuarios", tags=["usuarios"])
@@ -53,3 +55,13 @@ def obtener_usuario(
     _: Usuario = Depends(get_current_user),
 ):
     return UsuarioService(db).get_by_id(usuario_id)
+
+
+# HU2 — Servidores donde el usuario es miembro (cada uno ve solo los suyos).
+@router.get("/{usuario_id}/servidores", response_model=list[ServidorResponseDTO])
+def listar_servidores_de_usuario(
+    usuario_id: int,
+    db: Session = Depends(get_db),
+    actual: Usuario = Depends(get_current_user),
+):
+    return ServidorService(db).list_de_usuario(usuario_id, actual.id)

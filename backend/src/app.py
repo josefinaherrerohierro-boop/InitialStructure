@@ -6,6 +6,7 @@ from src.middlewares.error_middleware import app_error_handler
 from src.routers import (
     auth_router,
     canal_router,
+    invitacion_router,
     miembro_router,
     rol_router,
     servidor_router,
@@ -33,6 +34,7 @@ app.include_router(servidor_router.router, prefix="/api")
 app.include_router(canal_router.router, prefix="/api")
 app.include_router(rol_router.router, prefix="/api")
 app.include_router(miembro_router.router, prefix="/api")
+app.include_router(invitacion_router.router, prefix="/api")
 # TODO: registrar product_router cuando se implemente
 # app.include_router(product_router.router, prefix="/api")
 

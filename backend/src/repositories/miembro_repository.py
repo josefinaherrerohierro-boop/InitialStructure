@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 
 from src.db.models.miembro_model import Miembro
+from src.db.models.usuario_model import Usuario
 
 
 class MiembroRepository:
@@ -21,4 +22,14 @@ class MiembroRepository:
             self.db.query(Miembro)
             .filter(Miembro.usuario_id == usuario_id, Miembro.servidor_id == servidor_id)
             .first()
+        )
+
+    def list_activos(self, servidor_id: int) -> list[tuple[Miembro, Usuario]]:
+        """Miembros no baneados del servidor, junto con su usuario (para el username)."""
+        return (
+            self.db.query(Miembro, Usuario)
+            .join(Usuario, Usuario.id == Miembro.usuario_id)
+            .filter(Miembro.servidor_id == servidor_id, Miembro.baneado.is_(False))
+            .order_by(Miembro.fecha_union)
+            .all()
         )

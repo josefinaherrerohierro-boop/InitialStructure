@@ -1,3 +1,4 @@
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from src.db.models.rol_miembro_model import RolMiembro
@@ -37,6 +38,55 @@ class RolRepository:
             self.db.query(Rol)
             .filter(Rol.servidor_id == servidor_id, Rol.nombre == ROL_EVERYONE)
             .first()
+        )
+
+    def find_by_id(self, rol_id: int) -> Rol | None:
+        return self.db.query(Rol).filter(Rol.id == rol_id).first()
+
+    def find_by_nombre(self, servidor_id: int, nombre: str) -> Rol | None:
+        """Busca sin distinguir mayúsculas: "Moderador" y "moderador" chocan."""
+        return (
+            self.db.query(Rol)
+            .filter(Rol.servidor_id == servidor_id, func.lower(Rol.nombre) == nombre.lower())
+            .first()
+        )
+
+    def list_by_servidor(self, servidor_id: int) -> list[Rol]:
+        return self.db.query(Rol).filter(Rol.servidor_id == servidor_id).order_by(Rol.id).all()
+
+    def update(self, rol: Rol, **campos) -> Rol:
+        for nombre, valor in campos.items():
+            setattr(rol, nombre, valor)
+        self.db.flush()
+        return rol
+
+    def delete(self, rol: Rol) -> None:
+        # La base borra en cascada las asignaciones en roles_miembro.
+        self.db.delete(rol)
+        self.db.flush()
+
+    # ---------- Asignaciones (tabla roles_miembro) ----------
+    def tiene_rol(self, usuario_id: int, rol_id: int) -> bool:
+        return (
+            self.db.query(RolMiembro)
+            .filter(RolMiembro.usuario_id == usuario_id, RolMiembro.rol_id == rol_id)
+            .first()
+            is not None
+        )
+
+    def quitar(self, usuario_id: int, rol_id: int) -> None:
+        self.db.query(RolMiembro).filter(
+            RolMiembro.usuario_id == usuario_id, RolMiembro.rol_id == rol_id
+        ).delete()
+        self.db.flush()
+
+    def roles_de_usuario(self, servidor_id: int, usuario_id: int) -> list[Rol]:
+        return (
+            self.db.query(Rol)
+            .join(RolMiembro, RolMiembro.rol_id == Rol.id)
+            .filter(Rol.servidor_id == servidor_id, RolMiembro.usuario_id == usuario_id)
+            .order_by(Rol.id)
+            .all()
         )
 
     def asignar(self, usuario_id: int, rol_id: int) -> None:

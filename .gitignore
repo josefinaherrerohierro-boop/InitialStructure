@@ -1,0 +1,10 @@
+# Entornos virtuales de Python (cada uno crea el suyo, nunca se suben)
+venv/
+.venv/
+
+# Archivos con contraseñas
+.env
+
+# Archivos generados automáticamente
+__pycache__/
+*.pyc

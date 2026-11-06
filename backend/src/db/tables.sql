@@ -1,3 +1,24 @@
+-- =====================================================================
+-- Kort — Plataforma de comunidades (Proyecto 2)
+-- Script de creación de tablas (PostgreSQL)
+--
+-- Cómo usarlo: en pgAdmin, abrir el Query Tool sobre la base del
+-- proyecto y ejecutar este archivo completo. Después ejecutar seed.sql.
+--
+-- ATENCIÓN: las primeras líneas BORRAN las tablas si ya existen, para
+-- poder volver a correr el script desde cero. Se pierden los datos.
+-- =====================================================================
+
+DROP TABLE IF EXISTS mensajes      CASCADE;
+DROP TABLE IF EXISTS invitaciones  CASCADE;
+DROP TABLE IF EXISTS roles_miembro CASCADE;
+DROP TABLE IF EXISTS miembros      CASCADE;
+DROP TABLE IF EXISTS roles         CASCADE;
+DROP TABLE IF EXISTS canales       CASCADE;
+DROP TABLE IF EXISTS servidores    CASCADE;
+DROP TABLE IF EXISTS usuarios      CASCADE;
+
+
 -- 1. Usuarios (HU1)
 -- password_hash no está en las entidades sugeridas, pero hace falta
 -- para el login: sin saber quién es el usuario no se pueden validar

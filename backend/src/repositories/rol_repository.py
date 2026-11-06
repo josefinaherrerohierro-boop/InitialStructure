@@ -1,4 +1,4 @@
-from sqlalchemy import func
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from src.db.models.rol_miembro_model import RolMiembro
@@ -78,6 +78,16 @@ class RolRepository:
         self.db.query(RolMiembro).filter(
             RolMiembro.usuario_id == usuario_id, RolMiembro.rol_id == rol_id
         ).delete()
+        self.db.flush()
+
+    def quitar_todos_en_servidor(self, usuario_id: int, servidor_id: int) -> None:
+        """Quita al usuario TODOS sus roles de ese servidor (HU9, HU10).
+        Los roles que tenga en otros servidores no se tocan."""
+        roles_del_servidor = select(Rol.id).where(Rol.servidor_id == servidor_id)
+        self.db.query(RolMiembro).filter(
+            RolMiembro.usuario_id == usuario_id,
+            RolMiembro.rol_id.in_(roles_del_servidor),
+        ).delete(synchronize_session=False)
         self.db.flush()
 
     def roles_de_usuario(self, servidor_id: int, usuario_id: int) -> list[Rol]:

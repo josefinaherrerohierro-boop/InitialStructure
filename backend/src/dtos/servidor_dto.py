@@ -18,3 +18,7 @@ class ServidorResponseDTO(BaseModel):
     fecha_creacion: datetime
 
     model_config = {"from_attributes": True}
+
+
+class TransferirServidorDTO(BaseModel):
+    nuevo_duenio_id: int

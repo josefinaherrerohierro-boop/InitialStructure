@@ -33,3 +33,11 @@ class MiembroRepository:
             .order_by(Miembro.fecha_union)
             .all()
         )
+
+    def marcar_baneado(self, miembro: Miembro) -> None:
+        miembro.baneado = True
+        self.db.flush()
+
+    def delete(self, miembro: Miembro) -> None:
+        self.db.delete(miembro)
+        self.db.flush()

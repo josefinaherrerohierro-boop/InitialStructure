@@ -3,9 +3,18 @@ from sqlalchemy.orm import Session
 
 from src.db.connection import get_db
 from src.db.models.usuario_model import Usuario
-from src.dtos.servidor_dto import CreateServidorDTO, ServidorResponseDTO, UpdateServidorDTO
+from src.dtos.servidor_dto import (
+    CreateServidorDTO,
+    ServidorResponseDTO,
+    TransferirServidorDTO,
+    UpdateServidorDTO,
+)
 from src.middlewares.auth_middleware import get_current_user
-from src.schemas.servidor_schema import CreateServidorSchema, UpdateServidorSchema
+from src.schemas.servidor_schema import (
+    CreateServidorSchema,
+    TransferirServidorSchema,
+    UpdateServidorSchema,
+)
 from src.services.servidor_service import ServidorService
 
 router = APIRouter(prefix="/servidores", tags=["servidores"])
@@ -49,3 +58,15 @@ def borrar_servidor(
     actual: Usuario = Depends(get_current_user),
 ):
     ServidorService(db).delete(servidor_id, actual.id)
+
+
+# HU10 — Transferir el servidor a otro miembro (solo el dueño).
+@router.post("/{servidor_id}/transferir", response_model=ServidorResponseDTO)
+def transferir_servidor(
+    servidor_id: int,
+    payload: TransferirServidorSchema,
+    db: Session = Depends(get_db),
+    actual: Usuario = Depends(get_current_user),
+):
+    dto = TransferirServidorDTO(**payload.model_dump())
+    return ServidorService(db).transferir(servidor_id, dto, actual.id)

@@ -1,7 +1,12 @@
 from sqlalchemy.orm import Session
 
 from src.db.models.rol_model import ROL_EVERYONE
-from src.dtos.servidor_dto import CreateServidorDTO, ServidorResponseDTO, UpdateServidorDTO
+from src.dtos.servidor_dto import (
+    CreateServidorDTO,
+    ServidorResponseDTO,
+    TransferirServidorDTO,
+    UpdateServidorDTO,
+)
 from src.mappers.servidor_mapper import to_servidor_response
 from src.repositories.canal_repository import CanalRepository
 from src.repositories.miembro_repository import MiembroRepository
@@ -77,6 +82,22 @@ class ServidorService:
         self.permisos.exigir_duenio(servidor, actual_id)
         self.servidores.delete(servidor)
         self.db.commit()
+
+    # ---------- HU10: transferir el servidor ----------
+    def transferir(self, servidor_id: int, dto: TransferirServidorDTO, actual_id: int) -> ServidorResponseDTO:
+        servidor = self.permisos.obtener_servidor(servidor_id)
+        self.permisos.exigir_duenio(servidor, actual_id)
+
+        if dto.nuevo_duenio_id == actual_id:
+            raise UnprocessableError("Ya sos el dueño de este servidor")
+        # Solo se acepta como nuevo dueño a un miembro actual (no baneado).
+        if not self.permisos.es_miembro(servidor.id, dto.nuevo_duenio_id):
+            raise UnprocessableError("El nuevo dueño tiene que ser un miembro actual del servidor")
+
+        self.servidores.update(servidor, duenio_id=dto.nuevo_duenio_id)
+        self.db.commit()
+        self.db.refresh(servidor)
+        return to_servidor_response(servidor)
 
     # ---------- Ayudas internas ----------
     @staticmethod

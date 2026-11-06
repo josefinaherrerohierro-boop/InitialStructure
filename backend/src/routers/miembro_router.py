@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from src.db.connection import get_db
@@ -18,3 +18,41 @@ def listar_miembros(
     actual: Usuario = Depends(get_current_user),
 ):
     return MiembroService(db).list_by_servidor(servidor_id, actual.id)
+
+
+# HU9 — Expulsar (moderador). Puede volver con otra invitación.
+@router.post(
+    "/servidores/{servidor_id}/miembros/{usuario_id}/expulsar",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def expulsar_miembro(
+    servidor_id: int,
+    usuario_id: int,
+    db: Session = Depends(get_db),
+    actual: Usuario = Depends(get_current_user),
+):
+    MiembroService(db).expulsar(servidor_id, usuario_id, actual.id)
+
+
+# HU9 — Banear (moderador). No puede volver a entrar.
+@router.post(
+    "/servidores/{servidor_id}/miembros/{usuario_id}/banear",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def banear_miembro(
+    servidor_id: int,
+    usuario_id: int,
+    db: Session = Depends(get_db),
+    actual: Usuario = Depends(get_current_user),
+):
+    MiembroService(db).banear(servidor_id, usuario_id, actual.id)
+
+
+# HU10 — Salir del servidor (el dueño primero tiene que transferirlo).
+@router.post("/servidores/{servidor_id}/salir", status_code=status.HTTP_204_NO_CONTENT)
+def salir_del_servidor(
+    servidor_id: int,
+    db: Session = Depends(get_db),
+    actual: Usuario = Depends(get_current_user),
+):
+    MiembroService(db).salir(servidor_id, actual.id)

@@ -1,29 +1,34 @@
-from fastapi import Depends, Header
+from fastapi import Depends
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from src.db.connection import get_db
-from src.db.models.user_model import User
-from src.repositories.user_repository import UserRepository
+from src.db.models.usuario_model import Usuario
+from src.repositories.usuario_repository import UsuarioRepository
 from src.utils.errors import UnauthorizedError
 from src.utils.jwt import decode_token
 
+# HTTPBearer lee el header "Authorization: Bearer <token>" y además agrega
+# el botón "Authorize" en Swagger (/docs) para probar con el token.
+bearer_scheme = HTTPBearer(auto_error=False)
+
 
 def get_current_user(
-    authorization: str | None = Header(default=None),
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: Session = Depends(get_db),
-) -> User:
-    if not authorization or not authorization.lower().startswith("bearer "):
-        raise UnauthorizedError("Missing or malformed Authorization header")
+) -> Usuario:
+    """Devuelve el usuario dueño del token. Si no hay token válido → 401."""
+    if credentials is None:
+        raise UnauthorizedError("Falta el token. Iniciá sesión primero.")
 
-    token = authorization.split(" ", 1)[1].strip()
-    payload = decode_token(token)
+    payload = decode_token(credentials.credentials)
 
-    user_id = payload.get("sub")
-    if user_id is None:
-        raise UnauthorizedError("Invalid token payload")
+    usuario_id = payload.get("sub")
+    if usuario_id is None:
+        raise UnauthorizedError("Token inválido")
 
-    user = UserRepository(db).find_by_id(int(user_id))
-    if user is None:
-        raise UnauthorizedError("User no longer exists")
+    usuario = UsuarioRepository(db).find_by_id(int(usuario_id))
+    if usuario is None:
+        raise UnauthorizedError("El usuario del token ya no existe")
 
-    return user
+    return usuario

@@ -13,6 +13,7 @@ from src.routers import (
     rol_router,
     servidor_router,
     usuario_router,
+    voz_router,
 )
 from src.utils.errors import AppError
 
@@ -39,6 +40,7 @@ app.include_router(miembro_router.router, prefix="/api")
 app.include_router(invitacion_router.router, prefix="/api")
 app.include_router(mensaje_router.router, prefix="/api")
 app.include_router(estadisticas_router.router, prefix="/api")
+app.include_router(voz_router.router, prefix="/api")
 # TODO: registrar product_router cuando se implemente
 # app.include_router(product_router.router, prefix="/api")
 

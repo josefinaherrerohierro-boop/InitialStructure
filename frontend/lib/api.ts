@@ -273,3 +273,14 @@ export const actualizarMiCuenta = (datos: { email?: string; username?: string; p
   request<Usuario>('/usuarios/me', { method: 'PATCH', body: datos })
 
 export const borrarMiCuenta = () => request<void>('/usuarios/me', { method: 'DELETE' })
+
+// Chat de voz
+export type ParticipanteVoz = { usuario_id: number; username: string; silenciado: boolean }
+
+export const getParticipantesVoz = (canalId: number) => request<ParticipanteVoz[]>(`/canales/${canalId}/voz`)
+
+/** Dirección del WebSocket de señalización: http → ws (y https → wss). */
+export function urlVoz(canalId: number): string {
+  const token = encodeURIComponent(getToken() ?? '')
+  return `${API_URL.replace(/^http/, 'ws')}/ws/voz/${canalId}?token=${token}`
+}

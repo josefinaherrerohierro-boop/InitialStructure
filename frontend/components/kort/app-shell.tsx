@@ -17,6 +17,7 @@ import {
   type Servidor,
 } from '@/lib/api'
 import { calcularPermisos } from '@/lib/kort'
+import { useVoz } from '@/lib/use-voz'
 import { cn } from '@/lib/utils'
 import { ChannelList } from './channel-list'
 import { ConfiguracionServidor } from './config/configuracion-servidor'
@@ -29,7 +30,7 @@ import { ServerSelector } from './server-selector'
 import { useToast } from './toast-provider'
 import { Boton, Logo } from './ui'
 import { UserCard } from './user-card'
-import { VoicePanel } from './voice-panel'
+import { VoicePanel, VozBar } from './voice-panel'
 
 type ModalAbierto = 'crearServidor' | 'unirme' | 'crearCanal' | 'invitar' | 'configuracion' | 'cuenta' | null
 
@@ -62,6 +63,8 @@ function AppShellInterno() {
   const [miembrosVisibles, setMiembrosVisibles] = useState(true)
   const [menuAbierto, setMenuAbierto] = useState(false)
   const [modal, setModal] = useState<ModalAbierto>(null)
+  // Chat de voz: vive acá para que la llamada siga aunque mires otro canal.
+  const voz = useVoz()
 
   useEffect(() => {
     if (!getToken()) {
@@ -140,6 +143,7 @@ function AppShellInterno() {
   }
 
   function salir() {
+    voz.salir()
     clearToken()
     router.replace('/login')
   }
@@ -205,6 +209,7 @@ function AppShellInterno() {
         <div className="flex-1" />
       )}
 
+      <VozBar voz={voz} />
       <UserCard usuario={yo} onSalir={salir} onCuenta={() => setModal('cuenta')} />
     </div>
   )
@@ -280,7 +285,7 @@ function AppShellInterno() {
               <EmptyState onCrear={() => setModal('crearServidor')} onUnirme={() => setModal('unirme')} />
             ) : canal && yo ? (
               canal.tipo === 'voz' ? (
-                <VoicePanel nombre={canal.nombre} />
+                <VoicePanel canal={canal} yo={yo} voz={voz} />
               ) : (
                 <ChatPanel key={canal.id} canal={canal} yo={yo} permisos={permisos} />
               )

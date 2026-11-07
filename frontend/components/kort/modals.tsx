@@ -188,7 +188,7 @@ export function CrearCanalModal({
 
   const opciones: { valor: TipoCanal; etiqueta: string; desc: string; Icono: typeof Hash }[] = [
     { valor: 'texto', etiqueta: 'Texto', desc: 'Mensajes, links y charla escrita', Icono: Hash },
-    { valor: 'voz', etiqueta: 'Voz', desc: 'Para hablar (próximamente)', Icono: Volume2 },
+    { valor: 'voz', etiqueta: 'Voz', desc: 'Para hablar en tiempo real', Icono: Volume2 },
   ]
 
   return (

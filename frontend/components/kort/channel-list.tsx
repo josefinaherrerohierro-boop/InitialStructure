@@ -1,9 +1,31 @@
 'use client'
 
-import { Hash, Lock, Plus, Settings, UserPlus, Volume2 } from 'lucide-react'
+import useSWR from 'swr'
+import { Hash, Lock, MicOff, Plus, Settings, UserPlus, Volume2 } from 'lucide-react'
+import { getParticipantesVoz } from '@/lib/api'
 import type { Canal, Servidor } from '@/lib/api'
 import type { Permisos } from '@/lib/kort'
 import { cn } from '@/lib/utils'
+
+/** Debajo de cada canal de voz, quiénes están conectados (se actualiza cada 3 s). */
+function ConectadosEnVoz({ canalId }: { canalId: number }) {
+  const { data } = useSWR(['voz', canalId], () => getParticipantesVoz(canalId), {
+    refreshInterval: 3000,
+    onError: () => {},
+  })
+  if (!data || data.length === 0) return null
+  return (
+    <ul className="ml-6 flex flex-col gap-0.5 py-0.5">
+      {data.map((p) => (
+        <li key={p.usuario_id} className="flex items-center gap-1.5 truncate text-xs text-muted-foreground">
+          <span className="size-1.5 shrink-0 rounded-full bg-success" aria-hidden />
+          <span className="truncate">{p.username}</span>
+          {p.silenciado && <MicOff className="size-3 shrink-0 text-destructive" aria-label="Silenciado" />}
+        </li>
+      ))}
+    </ul>
+  )
+}
 
 function Grupo({
   titulo,
@@ -39,6 +61,7 @@ function Grupo({
                 <span className="flex-1 truncate">{c.nombre}</span>
                 {c.solo_lectura && <Lock className="size-3.5 shrink-0 opacity-70" aria-label="Solo lectura" />}
               </button>
+              {c.tipo === 'voz' && <ConectadosEnVoz canalId={c.id} />}
             </li>
           )
         })}

@@ -127,14 +127,16 @@ export function Interruptor({
         disabled={deshabilitado}
         onClick={() => onCambiar(!activo)}
         className={
-          'relative h-5 w-9 shrink-0 rounded-full transition-colors disabled:opacity-50 ' +
+          'relative block h-5 w-9 shrink-0 rounded-full transition-colors disabled:opacity-50 ' +
           (activo ? 'bg-primary' : 'bg-border')
         }
       >
+        {/* El círculo se ubica desde el borde izquierdo (left-0.5) y, cuando
+            está activo, se desplaza 16px a la derecha: queda siempre adentro. */}
         <span
           className={
-            'absolute top-0.5 size-4 rounded-full bg-foreground transition-transform ' +
-            (activo ? 'translate-x-4' : 'translate-x-0.5')
+            'absolute top-0.5 left-0.5 size-4 rounded-full bg-foreground transition-transform ' +
+            (activo ? 'translate-x-4' : 'translate-x-0')
           }
         />
       </button>

@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Kort — Frontend
 
-## Getting Started
+Interfaz web de **Kort** hecha con **Next.js (App Router) + TypeScript + Tailwind CSS**.
+La base se generó con **v0** a partir de un prompt con la identidad de Kort y la
+lista exacta de endpoints de la API; la configuración del servidor
+(`components/kort/config/`) y la cuenta (`components/kort/cuenta-modal.tsx`)
+se agregaron a mano siguiendo el mismo estilo.
 
-First, run the development server:
+## Cómo correrlo
+
+Requisitos: Node.js (LTS) y la API del backend corriendo en `http://localhost:8000`.
 
 ```bash
+cd frontend
+npm install        # solo la primera vez
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abrir http://localhost:3000
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+> La URL de la API se puede cambiar con la variable `NEXT_PUBLIC_API_URL`
+> (por defecto `http://localhost:8000/api`). El backend solo acepta pedidos
+> desde `http://localhost:3000` (CORS, variable `FRONTEND_URL` del backend).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Estructura
 
-## Learn More
+```
+app/
+├── login/ y registro/        # pantallas de acceso (HU1)
+├── app/                      # pantalla principal (servidores, canales, chat, miembros)
+└── invitacion/[codigo]/      # unirse con un link de invitación (HU6)
+components/kort/
+├── app-shell.tsx             # arma la pantalla principal y carga los datos
+├── channel-list.tsx          # canales del servidor (HU3)
+├── chat-panel.tsx            # mensajes con paginación y actualización cada 3 s (HU7, HU8)
+├── modals.tsx                # crear servidor, unirme, crear canal, invitar (HU2, HU3, HU5, HU6)
+├── members-panel.tsx         # lista de miembros con roles
+├── cuenta-modal.tsx          # mi cuenta (editar / borrar)
+└── config/                   # configuración del servidor
+    ├── general-tab.tsx       # nombre, salir, transferir, borrar (HU10)
+    ├── canales-tab.tsx       # renombrar, solo lectura, borrar (HU3)
+    ├── roles-tab.tsx         # crear y editar roles y permisos (HU4)
+    ├── miembros-tab.tsx      # asignar roles, expulsar y banear (HU4, HU9)
+    ├── invitaciones-tab.tsx  # ver y borrar invitaciones (HU5)
+    └── estadisticas-tab.tsx  # top usuarios, canales inactivos y crecimiento (HU11, HU12)
+lib/
+├── api.ts                    # TODAS las llamadas a la API (un solo lugar)
+└── kort.ts                   # permisos, colores, fechas
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Seguridad
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Los botones se muestran u ocultan según los permisos del usuario (`lib/kort.ts`,
+función `calcularPermisos`), pero **eso es solo comodidad visual**: el backend
+vuelve a validar cada operación y, si no corresponde, responde 403 con un
+mensaje que la interfaz muestra al usuario.

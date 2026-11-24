@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from src.db.models.miembro_model import Miembro
 from src.db.models.usuario_model import Usuario
@@ -32,6 +32,45 @@ class MiembroRepository:
             .filter(Miembro.servidor_id == servidor_id, Miembro.baneado.is_(False))
             .order_by(Miembro.fecha_union)
             .all()
+        )
+
+    def apodos(self, servidor_id: int) -> dict[int, str]:
+        """{usuario_id: apodo} de los miembros que tienen apodo en el servidor."""
+        filas = (
+            self.db.query(Miembro.usuario_id, Miembro.apodo)
+            .filter(Miembro.servidor_id == servidor_id, Miembro.apodo.isnot(None))
+            .all()
+        )
+        return {usuario_id: apodo for usuario_id, apodo in filas}
+
+    def update(self, miembro: Miembro, **campos) -> Miembro:
+        for nombre, valor in campos.items():
+            setattr(miembro, nombre, valor)
+        self.db.flush()
+        return miembro
+
+    def list_de_usuario(self, usuario_id: int) -> list[Miembro]:
+        """Todas las membresías activas de un usuario (para reordenar sus servidores)."""
+        return (
+            self.db.query(Miembro)
+            .filter(Miembro.usuario_id == usuario_id, Miembro.baneado.is_(False))
+            .all()
+        )
+
+    def comparten_servidor(self, usuario_a: int, usuario_b: int) -> bool:
+        """True si los dos usuarios son miembros (no baneados) de algún mismo servidor."""
+        otro = aliased(Miembro)
+        return (
+            self.db.query(Miembro)
+            .join(otro, otro.servidor_id == Miembro.servidor_id)
+            .filter(
+                Miembro.usuario_id == usuario_a,
+                otro.usuario_id == usuario_b,
+                Miembro.baneado.is_(False),
+                otro.baneado.is_(False),
+            )
+            .first()
+            is not None
         )
 
     def marcar_baneado(self, miembro: Miembro) -> None:

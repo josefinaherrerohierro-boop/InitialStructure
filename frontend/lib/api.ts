@@ -1,8 +1,21 @@
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
 export const TOKEN_KEY = 'kort_token'
 
-export type Usuario = { id: number; email: string; username: string; fecha_registro: string }
-export type Servidor = { id: number; nombre: string; duenio_id: number; fecha_creacion: string }
+export type Usuario = {
+  id: number
+  email: string
+  username: string
+  fecha_registro: string
+  bio?: string | null
+  avatar_url?: string | null
+}
+export type Servidor = {
+  id: number
+  nombre: string
+  duenio_id: number
+  fecha_creacion: string
+  expira_en?: string | null
+}
 export type TipoCanal = 'texto' | 'voz'
 export type Canal = {
   id: number
@@ -22,6 +35,8 @@ export type Rol = {
 export type Miembro = {
   usuario_id: number
   username: string
+  apodo?: string | null
+  avatar_url?: string | null
   fecha_union: string
   es_duenio: boolean
   roles: { id: number; nombre: string }[]
@@ -35,14 +50,32 @@ export type Invitacion = {
   usos: number
   fecha_vencimiento: string
 }
+export type TipoAdjunto = 'imagen' | 'audio' | 'video' | 'archivo'
+export type Adjunto = { url: string; tipo: TipoAdjunto; nombre?: string | null }
+export type Reaccion = { emoji: string; cantidad: number; usuarios: number[] }
+export type Encuesta = {
+  id: number
+  multiple: boolean
+  fecha_limite: string | null
+  cerrada: boolean
+  total_votantes: number
+  opciones: { id: number; texto: string; votos: number }[]
+  mis_votos: number[]
+}
 export type Mensaje = {
   id: number
   canal_id: number
   autor_id: number
   autor_username: string
+  autor_apodo?: string | null
+  autor_avatar_url?: string | null
   contenido: string
   fecha: string
   editado: boolean
+  fijado?: boolean
+  adjunto?: Adjunto | null
+  reacciones?: Reaccion[]
+  encuesta?: Encuesta | null
 }
 
 export class ApiError extends Error {
@@ -86,14 +119,15 @@ function extraerMensaje(body: unknown, status: number): { message: string; code?
 }
 
 type RequestOptions = {
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'
+  method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'
   body?: unknown
   auth?: boolean
 }
 
 async function request<T>(path: string, { method = 'GET', body, auth = true }: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' }
-  if (body !== undefined) headers['Content-Type'] = 'application/json'
+  const esFormulario = body instanceof FormData
+  if (body !== undefined && !esFormulario) headers['Content-Type'] = 'application/json'
   if (auth) {
     const token = getToken()
     if (token) headers.Authorization = `Bearer ${token}`
@@ -104,7 +138,7 @@ async function request<T>(path: string, { method = 'GET', body, auth = true }: R
     res = await fetch(`${API_URL}${path}`, {
       method,
       headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: esFormulario ? body : body !== undefined ? JSON.stringify(body) : undefined,
     })
   } catch {
     throw new ApiError(0, 'No pudimos conectarnos con el servidor de Kort. Revisá que la API esté funcionando.')
@@ -183,8 +217,8 @@ export const getMensajes = (canalId: number, opciones: { limite?: number; antes_
   return request<Mensaje[]>(`/canales/${canalId}/mensajes?${params.toString()}`)
 }
 
-export const enviarMensaje = (canalId: number, contenido: string) =>
-  request<Mensaje>(`/canales/${canalId}/mensajes`, { method: 'POST', body: { contenido } })
+export const enviarMensaje = (canalId: number, contenido: string, adjunto?: Adjunto | null) =>
+  request<Mensaje>(`/canales/${canalId}/mensajes`, { method: 'POST', body: { contenido, adjunto: adjunto ?? null } })
 
 export const editarMensaje = (mensajeId: number, contenido: string) =>
   request<Mensaje>(`/mensajes/${mensajeId}`, { method: 'PATCH', body: { contenido } })
@@ -284,3 +318,55 @@ export function urlVoz(canalId: number): string {
   const token = encodeURIComponent(getToken() ?? '')
   return `${API_URL.replace(/^http/, 'ws')}/ws/voz/${canalId}?token=${token}`
 }
+
+// ---------------------------------------------------------------------------
+// Archivos (imágenes, audios, videos...) y chat enriquecido
+// ---------------------------------------------------------------------------
+
+export type ArchivoSubido = { url: string; tipo: TipoAdjunto; nombre: string; tamanio: number }
+
+export const TAMANIO_MAXIMO_ARCHIVO = 15 * 1024 * 1024
+
+/** Sube un archivo y devuelve su URL (relativa al backend, ej: /uploads/abc.png). */
+export function subirArchivo(archivo: Blob, nombre?: string) {
+  const form = new FormData()
+  form.append('archivo', archivo, nombre ?? (archivo instanceof File ? archivo.name : 'archivo'))
+  return request<ArchivoSubido>('/archivos', { method: 'POST', body: form })
+}
+
+/** URL completa de un archivo subido (las guardamos relativas: /uploads/...). */
+export function urlArchivo(url: string | null | undefined): string | undefined {
+  if (!url) return undefined
+  if (/^https?:\/\//.test(url)) return url
+  return `${API_URL.replace(/\/api\/?$/, '')}${url}`
+}
+
+export const reaccionar = (mensajeId: number, emoji: string) =>
+  request<Mensaje>(`/mensajes/${mensajeId}/reacciones`, { method: 'POST', body: { emoji } })
+
+export const fijarMensaje = (mensajeId: number, fijar: boolean) =>
+  request<Mensaje>(`/mensajes/${mensajeId}/fijar`, { method: fijar ? 'POST' : 'DELETE' })
+
+export const getFijados = (canalId: number) => request<Mensaje[]>(`/canales/${canalId}/fijados`)
+
+export function buscarMensajes(servidorId: number, q: string, canalId?: number) {
+  const params = new URLSearchParams({ q })
+  if (canalId) params.set('canal_id', String(canalId))
+  return request<Mensaje[]>(`/servidores/${servidorId}/buscar?${params.toString()}`)
+}
+
+export type TipoMultimedia = 'imagen' | 'video' | 'audio' | 'archivo' | 'link'
+
+export function getMultimedia(servidorId: number, tipo: TipoMultimedia, antesDe?: number) {
+  const params = new URLSearchParams({ tipo })
+  if (antesDe) params.set('antes_de', String(antesDe))
+  return request<Mensaje[]>(`/servidores/${servidorId}/multimedia?${params.toString()}`)
+}
+
+export const crearEncuesta = (
+  canalId: number,
+  datos: { pregunta: string; opciones: string[]; multiple: boolean; fecha_limite: string | null },
+) => request<Mensaje>(`/canales/${canalId}/encuestas`, { method: 'POST', body: datos })
+
+export const votarEncuesta = (encuestaId: number, opcionIds: number[]) =>
+  request<Mensaje>(`/encuestas/${encuestaId}/votar`, { method: 'POST', body: { opcion_ids: opcionIds } })

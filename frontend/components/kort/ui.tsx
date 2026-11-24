@@ -4,6 +4,7 @@ import { forwardRef } from 'react'
 import { Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { colorDesdeNombre, iniciales } from '@/lib/kort'
+import { urlArchivo } from '@/lib/api'
 
 export function Logo({ className }: { className?: string }) {
   return (
@@ -89,20 +90,33 @@ export function ErrorFormulario({ mensaje }: { mensaje: string | null }) {
   )
 }
 
-export function Avatar({ nombre, tamanio = 'md', className }: { nombre: string; tamanio?: 'sm' | 'md' | 'lg'; className?: string }) {
+export function Avatar({
+  nombre,
+  url,
+  tamanio = 'md',
+  className,
+}: {
+  nombre: string
+  url?: string | null
+  tamanio?: 'sm' | 'md' | 'lg' | 'xl'
+  className?: string
+}) {
   const color = colorDesdeNombre(nombre)
+  const clases = cn(
+    'inline-flex shrink-0 items-center justify-center overflow-hidden rounded-lg font-semibold',
+    tamanio === 'sm' && 'size-7 text-[11px]',
+    tamanio === 'md' && 'size-9 text-xs',
+    tamanio === 'lg' && 'size-12 text-base',
+    tamanio === 'xl' && 'size-24 rounded-2xl text-2xl',
+    className,
+  )
+  const src = urlArchivo(url)
+  if (src) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={src} alt="" aria-hidden className={cn(clases, 'object-cover')} />
+  }
   return (
-    <span
-      aria-hidden
-      className={cn(
-        'inline-flex shrink-0 items-center justify-center rounded-lg font-semibold',
-        tamanio === 'sm' && 'size-7 text-[11px]',
-        tamanio === 'md' && 'size-9 text-xs',
-        tamanio === 'lg' && 'size-12 text-base',
-        className,
-      )}
-      style={{ backgroundColor: `${color}26`, color }}
-    >
+    <span aria-hidden className={clases} style={{ backgroundColor: `${color}26`, color }}>
       {iniciales(nombre)}
     </span>
   )

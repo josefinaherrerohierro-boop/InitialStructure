@@ -3,11 +3,12 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import useSWR from 'swr'
 import { CircleAlert, Lock } from 'lucide-react'
-import { getMensajes, mensajeDeError, type Canal, type Mensaje, type Usuario } from '@/lib/api'
+import { enviarMensaje, getMensajes, mensajeDeError, type Canal, type Mensaje, type Usuario } from '@/lib/api'
 import { parseFecha } from '@/lib/kort'
 import type { Permisos } from '@/lib/kort'
 import { useToast } from './toast-provider'
 import { Composer } from './composer'
+import { CrearEncuestaModal } from './encuesta-modal'
 import { MessageItem } from './message-item'
 import { Boton } from './ui'
 
@@ -27,8 +28,19 @@ function combinar(base: Map<number, Mensaje>, recientes: Mensaje[]): Map<number,
   return res
 }
 
-export function ChatPanel({ canal, yo, permisos }: { canal: Canal; yo: Usuario; permisos: Permisos }) {
+export function ChatPanel({
+  canal,
+  yo,
+  permisos,
+  onVerPerfil,
+}: {
+  canal: Canal
+  yo: Usuario
+  permisos: Permisos
+  onVerPerfil?: (usuarioId: number) => void
+}) {
   const toast = useToast()
+  const [creandoEncuesta, setCreandoEncuesta] = useState(false)
   const [vistos, setVistos] = useState<Map<number, Mensaje>>(() => new Map())
   const [hayAnteriores, setHayAnteriores] = useState<boolean | null>(null)
   const [cargandoAnteriores, setCargandoAnteriores] = useState(false)
@@ -176,8 +188,11 @@ export function ChatPanel({ canal, yo, permisos }: { canal: Canal; yo: Usuario; 
                   key={m.id}
                   mensaje={m}
                   agrupado={agrupado}
+                  miId={yo.id}
                   puedeEditar={propio}
                   puedeBorrar={propio || permisos.esModerador}
+                  puedeFijar={permisos.esModerador}
+                  onVerPerfil={onVerPerfil}
                   onEditado={alEditar}
                   onBorrado={alBorrar}
                 />
@@ -188,7 +203,21 @@ export function ChatPanel({ canal, yo, permisos }: { canal: Canal; yo: Usuario; 
       </div>
 
       {puedeEscribir ? (
-        <Composer canalId={canal.id} canalNombre={canal.nombre} onEnviado={alEnviar} />
+        <>
+          <Composer
+            key={canal.id}
+            destino={`#${canal.nombre}`}
+            onEnviar={(contenido, adjunto) => enviarMensaje(canal.id, contenido, adjunto)}
+            onEnviado={alEnviar}
+            onEncuesta={() => setCreandoEncuesta(true)}
+          />
+          <CrearEncuestaModal
+            abierto={creandoEncuesta}
+            canalId={canal.id}
+            onCerrar={() => setCreandoEncuesta(false)}
+            onCreada={alEnviar}
+          />
+        </>
       ) : (
         <div className="px-4 pb-4">
           <div className="flex items-center gap-2.5 rounded-xl border border-border bg-surface px-4 py-3.5 text-sm text-muted-foreground">

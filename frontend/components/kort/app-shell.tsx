@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import useSWR, { SWRConfig } from 'swr'
-import { Hash, Lock, Menu, Plus, Ticket, Users, Volume2, X } from 'lucide-react'
+import { Hash, Images, Lock, Menu, Pin, Plus, Search, Ticket, Users, Volume2, X } from 'lucide-react'
 import {
   ApiError,
   clearToken,
@@ -25,6 +25,7 @@ import { CuentaModal } from './cuenta-modal'
 import { ChatPanel } from './chat-panel'
 import { EmptyState } from './empty-state'
 import { MembersPanel } from './members-panel'
+import { BusquedaPanel, FijadosPanel, MultimediaPanel } from './paneles-chat'
 import { CrearCanalModal, CrearServidorModal, InvitarModal, UnirmeModal } from './modals'
 import { ServerSelector } from './server-selector'
 import { useToast } from './toast-provider'
@@ -32,6 +33,7 @@ import { Boton, Logo } from './ui'
 import { UserCard } from './user-card'
 import { VoicePanel, VozBar } from './voice-panel'
 
+type PanelDerecho = 'miembros' | 'fijados' | 'buscar' | 'multimedia' | null
 type ModalAbierto = 'crearServidor' | 'unirme' | 'crearCanal' | 'invitar' | 'configuracion' | 'cuenta' | null
 
 export function AppShell() {
@@ -60,7 +62,7 @@ function AppShellInterno() {
     return Number.isFinite(v) && v > 0 ? v : undefined
   })
   const [canalPorServidor, setCanalPorServidor] = useState<Record<number, number>>({})
-  const [miembrosVisibles, setMiembrosVisibles] = useState(true)
+  const [panel, setPanel] = useState<PanelDerecho>('miembros')
   const [menuAbierto, setMenuAbierto] = useState(false)
   const [modal, setModal] = useState<ModalAbierto>(null)
   // Chat de voz: vive acá para que la llamada siga aunque mires otro canal.
@@ -157,6 +159,31 @@ function AppShellInterno() {
   }
 
   const sinServidores = servidores && servidores.length === 0
+
+  function alternarPanel(p: Exclude<PanelDerecho, null>) {
+    setPanel((actual) => (actual === p ? null : p))
+  }
+
+  const panelContenido = !servidor
+    ? null
+    : panel === 'miembros'
+      ? (
+          <MembersPanel miembros={miembros} cargando={cargandoMiembros} miId={yo?.id} onCerrar={() => setPanel(null)} />
+        )
+      : panel === 'fijados' && canal?.tipo === 'texto'
+        ? <FijadosPanel canal={canal} onCerrar={() => setPanel(null)} />
+        : panel === 'buscar'
+          ? (
+              <BusquedaPanel
+                servidorId={servidor.id}
+                canales={canales ?? []}
+                onIrACanal={seleccionarCanal}
+                onCerrar={() => setPanel(null)}
+              />
+            )
+          : panel === 'multimedia'
+            ? <MultimediaPanel servidorId={servidor.id} onCerrar={() => setPanel(null)} />
+            : null
 
   const sidebar = (
     <div className="flex h-full flex-col gap-5 p-3">
@@ -264,18 +291,19 @@ function AppShellInterno() {
             <h1 className="flex-1 truncate font-semibold">{servidor?.nombre ?? 'Kort'}</h1>
           )}
           {servidor && (
-            <button
-              type="button"
-              onClick={() => setMiembrosVisibles((v) => !v)}
-              aria-pressed={miembrosVisibles}
-              className={cn(
-                'flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors',
-                miembrosVisibles ? 'bg-elevated text-foreground' : 'text-muted-foreground hover:bg-elevated hover:text-foreground',
+            <div className="flex shrink-0 items-center gap-0.5">
+              {canal?.tipo === 'texto' && (
+                <BotonPanel icono={Pin} etiqueta="Fijados" activo={panel === 'fijados'} onClick={() => alternarPanel('fijados')} />
               )}
-            >
-              <Users className="size-4" aria-hidden />
-              <span className="hidden sm:inline">Miembros</span>
-            </button>
+              <BotonPanel icono={Search} etiqueta="Buscar" activo={panel === 'buscar'} onClick={() => alternarPanel('buscar')} />
+              <BotonPanel
+                icono={Images}
+                etiqueta="Multimedia"
+                activo={panel === 'multimedia'}
+                onClick={() => alternarPanel('multimedia')}
+              />
+              <BotonPanel icono={Users} etiqueta="Miembros" activo={panel === 'miembros'} onClick={() => alternarPanel('miembros')} />
+            </div>
           )}
         </header>
 
@@ -300,24 +328,10 @@ function AppShellInterno() {
             )}
           </div>
 
-          {servidor && miembrosVisibles && (
+          {servidor && panelContenido && (
             <>
-              <div className="hidden lg:block">
-                <MembersPanel
-                  miembros={miembros}
-                  cargando={cargandoMiembros}
-                  miId={yo?.id}
-                  onCerrar={() => setMiembrosVisibles(false)}
-                />
-              </div>
-              <div className="fixed inset-y-0 right-0 z-30 shadow-2xl shadow-black/50 lg:hidden">
-                <MembersPanel
-                  miembros={miembros}
-                  cargando={cargandoMiembros}
-                  miId={yo?.id}
-                  onCerrar={() => setMiembrosVisibles(false)}
-                />
-              </div>
+              <div className="hidden lg:block">{panelContenido}</div>
+              <div className="fixed inset-y-0 right-0 z-30 shadow-2xl shadow-black/50 lg:hidden">{panelContenido}</div>
             </>
           )}
         </div>
@@ -362,5 +376,33 @@ function AppShellInterno() {
         />
       )}
     </div>
+  )
+}
+
+function BotonPanel({
+  icono: Icono,
+  etiqueta,
+  activo,
+  onClick,
+}: {
+  icono: React.ComponentType<{ className?: string; 'aria-hidden'?: boolean }>
+  etiqueta: string
+  activo: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={activo}
+      title={etiqueta}
+      className={cn(
+        'flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm transition-colors',
+        activo ? 'bg-elevated text-foreground' : 'text-muted-foreground hover:bg-elevated hover:text-foreground',
+      )}
+    >
+      <Icono className="size-4" aria-hidden />
+      <span className="hidden xl:inline">{etiqueta}</span>
+    </button>
   )
 }

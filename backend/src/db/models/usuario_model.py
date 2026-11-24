@@ -14,3 +14,6 @@ class Usuario(Base):
     username = Column(String(32), unique=True, nullable=False)
     password_hash = Column(String(255), nullable=False)  # nunca se expone al cliente
     fecha_registro = Column(DateTime, nullable=False, server_default=func.now())
+    # Perfil
+    bio = Column(String(190), nullable=True)
+    avatar_url = Column(String(255), nullable=True)  # copia de la foto principal

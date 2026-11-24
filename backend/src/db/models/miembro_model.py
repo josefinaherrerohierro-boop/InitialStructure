@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.sql import func
 
 from src.db.connection import Base
@@ -16,3 +16,5 @@ class Miembro(Base):
     servidor_id = Column(Integer, ForeignKey("servidores.id", ondelete="CASCADE"), primary_key=True)
     fecha_union = Column(DateTime, nullable=False, server_default=func.now())
     baneado = Column(Boolean, nullable=False, default=False)
+    apodo = Column(String(32), nullable=True)  # apodo dentro de este servidor
+    posicion = Column(Integer, nullable=True)  # orden en la barra lateral del usuario

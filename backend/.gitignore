@@ -13,3 +13,6 @@ venv/
 .idea/
 .vscode/
 .DS_Store
+
+# Archivos que suben los usuarios (imágenes, audios, videos...)
+uploads/

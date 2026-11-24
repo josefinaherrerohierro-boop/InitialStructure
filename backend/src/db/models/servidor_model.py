@@ -13,3 +13,5 @@ class Servidor(Base):
     nombre = Column(String(100), nullable=False)
     duenio_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
     fecha_creacion = Column(DateTime, nullable=False, server_default=func.now())
+    # Servidores temporales: al llegar a esta fecha se borran solos. NULL = permanente.
+    expira_en = Column(DateTime, nullable=True)

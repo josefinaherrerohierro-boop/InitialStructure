@@ -1,9 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from src.config.env import settings
 from src.middlewares.error_middleware import app_error_handler
 from src.routers import (
+    archivo_router,
     auth_router,
     canal_router,
     estadisticas_router,
@@ -15,6 +17,7 @@ from src.routers import (
     usuario_router,
     voz_router,
 )
+from src.utils.archivos import CARPETA_UPLOADS
 from src.utils.errors import AppError
 
 app = FastAPI(title="Kort API")
@@ -41,8 +44,14 @@ app.include_router(invitacion_router.router, prefix="/api")
 app.include_router(mensaje_router.router, prefix="/api")
 app.include_router(estadisticas_router.router, prefix="/api")
 app.include_router(voz_router.router, prefix="/api")
+app.include_router(archivo_router.router, prefix="/api")
 # TODO: registrar product_router cuando se implemente
 # app.include_router(product_router.router, prefix="/api")
+
+
+# Archivos subidos por los usuarios (imágenes, audios, videos...): /uploads/<nombre>
+CARPETA_UPLOADS.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=CARPETA_UPLOADS), name="uploads")
 
 
 @app.get("/health")

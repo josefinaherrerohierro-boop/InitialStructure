@@ -13,6 +13,7 @@ import {
   getRoles,
   getFeed,
   getPublicacionesDePerfil,
+  getPublicacionesDeServidor,
   getServidoresDeUsuario,
   getToken,
   mensajeDeError,
@@ -23,7 +24,8 @@ import { calcularPermisos } from '@/lib/kort'
 import { useVoz } from '@/lib/use-voz'
 import { cn } from '@/lib/utils'
 import { AjustesUsuario } from './ajustes/ajustes-usuario'
-import { ChannelList } from './channel-list'
+import { CalendarioView } from './calendario'
+import { ChannelList, HERRAMIENTAS, type Herramienta } from './channel-list'
 import { ConfiguracionServidor } from './config/configuracion-servidor'
 import { ChatPanel, DirectoPanel } from './chat-panel'
 import { EmptyState } from './empty-state'
@@ -34,6 +36,8 @@ import { CrearCanalModal, CrearServidorModal, InvitarModal, UnirmeModal } from '
 import { BusquedaPanel, FijadosPanel, MultimediaPanel } from './paneles-chat'
 import { PerfilModal } from './perfil-modal'
 import { PublicacionesLista } from './publicaciones'
+import { ScoreboardView } from './scoreboard'
+import { TareasView } from './tareas'
 import { ServerSelector } from './server-selector'
 import { useToast } from './toast-provider'
 import { Avatar, Boton, Logo } from './ui'
@@ -71,6 +75,8 @@ function AppShellInterno() {
   const [enInicio, setEnInicio] = useState(() => params.has('inicio'))
   const [seleccionInicio, setSeleccionInicio] = useState<SeleccionInicio>({ tipo: 'amigos' })
   const [canalPorServidor, setCanalPorServidor] = useState<Record<number, number>>({})
+  // Si está elegida una herramienta (calendario, tareas...) se muestra en vez del canal.
+  const [herramientaPorServidor, setHerramientaPorServidor] = useState<Record<number, Herramienta | null>>({})
   const [panel, setPanel] = useState<PanelDerecho>('miembros')
   const [menuAbierto, setMenuAbierto] = useState(false)
   const [modal, setModal] = useState<ModalAbierto>(null)
@@ -115,6 +121,8 @@ function AppShellInterno() {
     getRoles(servidor!.id),
   )
 
+  const herramienta = servidor ? (herramientaPorServidor[servidor.id] ?? null) : null
+
   const permisos = useMemo(() => calcularPermisos(servidor, yo?.id, miembros, roles), [servidor, yo, miembros, roles])
 
   const canal = useMemo(() => {
@@ -145,6 +153,13 @@ function AppShellInterno() {
   function seleccionarCanal(id: number) {
     if (!servidor) return
     setCanalPorServidor((prev) => ({ ...prev, [servidor.id]: id }))
+    setHerramientaPorServidor((prev) => ({ ...prev, [servidor.id]: null }))
+    setMenuAbierto(false)
+  }
+
+  function seleccionarHerramienta(h: Herramienta) {
+    if (!servidor) return
+    setHerramientaPorServidor((prev) => ({ ...prev, [servidor.id]: h }))
     setMenuAbierto(false)
   }
 
@@ -289,8 +304,10 @@ function AppShellInterno() {
           canales={canales}
           cargando={cargandoCanales}
           seleccionadoId={canal?.id}
+          herramienta={herramienta}
           permisos={permisos}
           onSeleccionar={seleccionarCanal}
+          onHerramienta={seleccionarHerramienta}
           onCrearCanal={() => setModal('crearCanal')}
           onInvitar={() => setModal('invitar')}
           onConfigurar={() => setModal('configuracion')}
@@ -352,7 +369,12 @@ function AppShellInterno() {
   } else {
     encabezado = (
       <>
-        {canal ? (
+        {herramienta ? (
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <IconoHerramienta herramienta={herramienta} />
+            <span className="hidden truncate text-sm text-muted-foreground sm:inline">· {servidor?.nombre}</span>
+          </div>
+        ) : canal ? (
           <div className="flex min-w-0 flex-1 items-center gap-2">
             {canal.tipo === 'voz' ? (
               <Volume2 className="size-4 shrink-0 text-muted-foreground" aria-hidden />
@@ -373,7 +395,7 @@ function AppShellInterno() {
         )}
         {servidor && (
           <div className="flex shrink-0 items-center gap-0.5">
-            {canal?.tipo === 'texto' && (
+            {canal?.tipo === 'texto' && !herramienta && (
               <BotonPanel icono={Pin} etiqueta="Fijados" activo={panel === 'fijados'} onClick={() => alternarPanel('fijados')} />
             )}
             <BotonPanel icono={Search} etiqueta="Buscar" activo={panel === 'buscar'} onClick={() => alternarPanel('buscar')} />
@@ -390,6 +412,37 @@ function AppShellInterno() {
     )
     contenido = sinServidores ? (
       <EmptyState onCrear={() => setModal('crearServidor')} onUnirme={() => setModal('unirme')} />
+    ) : herramienta && servidor && yo ? (
+      herramienta === 'publicaciones' ? (
+        <div className="scrollbar-thin flex-1 overflow-y-auto">
+          <div className="mx-auto max-w-2xl px-4 py-6">
+            <PublicacionesLista
+              key={servidor.id}
+              clave={'servidor-' + servidor.id}
+              cargar={(antesDe) => getPublicacionesDeServidor(servidor.id, antesDe)}
+              yo={yo}
+              servidorId={servidor.id}
+              permitirPublicar={permisos.puedeEscribir}
+              puedeModerar={permisos.esModerador}
+              vacio="Nadie publicó nada en este servidor todavía."
+              onVerPerfil={setPerfilAbierto}
+            />
+          </div>
+        </div>
+      ) : herramienta === 'calendario' ? (
+        <CalendarioView key={servidor.id} servidorId={servidor.id} miId={yo.id} permisos={permisos} />
+      ) : herramienta === 'tareas' ? (
+        <TareasView key={servidor.id} servidorId={servidor.id} miId={yo.id} miembros={miembros ?? []} permisos={permisos} />
+      ) : (
+        <ScoreboardView
+          key={servidor.id}
+          servidorId={servidor.id}
+          miId={yo.id}
+          miembros={miembros ?? []}
+          permisos={permisos}
+          onVerPerfil={setPerfilAbierto}
+        />
+      )
     ) : canal && yo ? (
       canal.tipo === 'voz' ? (
         <VoicePanel canal={canal} yo={yo} voz={voz} />
@@ -513,6 +566,16 @@ function AppShellInterno() {
         }
       />
     </div>
+  )
+}
+
+function IconoHerramienta({ herramienta }: { herramienta: Herramienta }) {
+  const h = HERRAMIENTAS.find((x) => x.id === herramienta)!
+  return (
+    <>
+      <h.Icono className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+      <h1 className="truncate font-semibold">{h.nombre}</h1>
+    </>
   )
 }
 

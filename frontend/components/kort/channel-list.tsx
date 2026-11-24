@@ -1,7 +1,7 @@
 'use client'
 
 import useSWR from 'swr'
-import { Hash, Lock, MicOff, Plus, Settings, UserPlus, Volume2 } from 'lucide-react'
+import { CalendarDays, Hash, ListTodo, Lock, MicOff, Newspaper, Plus, Settings, Trophy, UserPlus, Volume2 } from 'lucide-react'
 import { getParticipantesVoz } from '@/lib/api'
 import type { Canal, Servidor } from '@/lib/api'
 import type { Permisos } from '@/lib/kort'
@@ -70,13 +70,24 @@ function Grupo({
   )
 }
 
+export type Herramienta = 'publicaciones' | 'calendario' | 'tareas' | 'scoreboard'
+
+export const HERRAMIENTAS: { id: Herramienta; nombre: string; Icono: typeof Hash }[] = [
+  { id: 'publicaciones', nombre: 'Publicaciones', Icono: Newspaper },
+  { id: 'calendario', nombre: 'Calendario', Icono: CalendarDays },
+  { id: 'tareas', nombre: 'Tareas', Icono: ListTodo },
+  { id: 'scoreboard', nombre: 'Scoreboard', Icono: Trophy },
+]
+
 export function ChannelList({
   servidor,
   canales,
   cargando,
   seleccionadoId,
+  herramienta,
   permisos,
   onSeleccionar,
+  onHerramienta,
   onCrearCanal,
   onInvitar,
   onConfigurar,
@@ -85,8 +96,10 @@ export function ChannelList({
   canales: Canal[] | undefined
   cargando: boolean
   seleccionadoId: number | undefined
+  herramienta: Herramienta | null
   permisos: Permisos
   onSeleccionar: (id: number) => void
+  onHerramienta: (h: Herramienta) => void
   onCrearCanal: () => void
   onInvitar: () => void
   onConfigurar: () => void
@@ -142,8 +155,41 @@ export function ChannelList({
           </div>
         ) : (
           <>
-            <Grupo titulo="Texto" canales={texto} seleccionadoId={seleccionadoId} onSeleccionar={onSeleccionar} />
-            <Grupo titulo="Voz" canales={voz} seleccionadoId={seleccionadoId} onSeleccionar={onSeleccionar} />
+            <div className="flex flex-col gap-0.5">
+              <h3 className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Servidor</h3>
+              <ul className="grid grid-cols-2 gap-0.5">
+                {HERRAMIENTAS.map(({ id, nombre, Icono }) => (
+                  <li key={id}>
+                    <button
+                      type="button"
+                      onClick={() => onHerramienta(id)}
+                      aria-current={herramienta === id ? 'true' : undefined}
+                      className={cn(
+                        'flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors',
+                        herramienta === id
+                          ? 'bg-elevated text-foreground'
+                          : 'text-muted-foreground hover:bg-elevated/60 hover:text-foreground',
+                      )}
+                    >
+                      <Icono className={cn('size-4 shrink-0', herramienta === id ? 'text-primary' : 'opacity-70')} aria-hidden />
+                      <span className="truncate">{nombre}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <Grupo
+              titulo="Texto"
+              canales={texto}
+              seleccionadoId={herramienta ? undefined : seleccionadoId}
+              onSeleccionar={onSeleccionar}
+            />
+            <Grupo
+              titulo="Voz"
+              canales={voz}
+              seleccionadoId={herramienta ? undefined : seleccionadoId}
+              onSeleccionar={onSeleccionar}
+            />
             {canales && canales.length === 0 && (
               <p className="px-2 text-sm text-muted-foreground">Este servidor no tiene canales.</p>
             )}

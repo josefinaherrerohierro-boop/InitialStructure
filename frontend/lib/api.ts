@@ -499,3 +499,81 @@ export const getEstados = () => request<EstadosDeUsuario[]>('/estados')
 export const subirEstado = (datos: { contenido: string; imagen_url: string | null; color_fondo: string }) =>
   request<Estado>('/estados', { method: 'POST', body: datos })
 export const borrarEstado = (id: number) => request<void>(`/estados/${id}`, { method: 'DELETE' })
+
+// ---------------------------------------------------------------------------
+// Calendario, tareas y scoreboard de cada servidor
+// ---------------------------------------------------------------------------
+
+export type Evento = {
+  id: number
+  servidor_id: number
+  creador: UsuarioResumen
+  titulo: string
+  descripcion: string
+  lugar: string
+  inicio: string
+  fin: string | null
+  asistentes: UsuarioResumen[]
+  voy: boolean
+}
+export type DatosEvento = { titulo: string; descripcion: string; lugar: string; inicio: string; fin: string | null }
+
+export const getEventos = (servidorId: number, desde: string, hasta: string) =>
+  request<Evento[]>(`/servidores/${servidorId}/eventos?${new URLSearchParams({ desde, hasta }).toString()}`)
+export const crearEvento = (servidorId: number, datos: DatosEvento) =>
+  request<Evento>(`/servidores/${servidorId}/eventos`, { method: 'POST', body: datos })
+export const editarEvento = (id: number, datos: Partial<DatosEvento>) =>
+  request<Evento>(`/eventos/${id}`, { method: 'PATCH', body: datos })
+export const borrarEvento = (id: number) => request<void>(`/eventos/${id}`, { method: 'DELETE' })
+export const alternarAsistencia = (id: number) => request<Evento>(`/eventos/${id}/asistir`, { method: 'POST' })
+
+export type EstadoTarea = 'pendiente' | 'en_progreso' | 'hecha'
+export type Tarea = {
+  id: number
+  servidor_id: number
+  creador: UsuarioResumen
+  asignado: UsuarioResumen | null
+  titulo: string
+  descripcion: string
+  fecha_limite: string | null
+  estado: EstadoTarea
+  vencida: boolean
+  fecha_creacion: string
+  fecha_completada: string | null
+}
+export type DatosTarea = {
+  titulo?: string
+  descripcion?: string
+  asignado_id?: number | null
+  fecha_limite?: string | null
+  estado?: EstadoTarea
+}
+
+export const getTareas = (servidorId: number, mias = false) =>
+  request<Tarea[]>(`/servidores/${servidorId}/tareas${mias ? '?mias=true' : ''}`)
+export const crearTarea = (servidorId: number, datos: DatosTarea & { titulo: string }) =>
+  request<Tarea>(`/servidores/${servidorId}/tareas`, { method: 'POST', body: datos })
+export const editarTarea = (id: number, datos: DatosTarea) => request<Tarea>(`/tareas/${id}`, { method: 'PATCH', body: datos })
+export const borrarTarea = (id: number) => request<void>(`/tareas/${id}`, { method: 'DELETE' })
+
+export type Puntaje = {
+  posicion: number
+  usuario: UsuarioResumen
+  apodo: string | null
+  puntos: number
+  mensajes_30_dias: number
+  tareas_hechas: number
+}
+export type MovimientoPuntos = {
+  id: number
+  usuario: UsuarioResumen
+  otorgado_por: UsuarioResumen | null
+  cantidad: number
+  motivo: string
+  fecha: string
+}
+
+export const getScoreboard = (servidorId: number) => request<Puntaje[]>(`/servidores/${servidorId}/scoreboard`)
+export const getMovimientosPuntos = (servidorId: number) => request<MovimientoPuntos[]>(`/servidores/${servidorId}/puntos`)
+export const darPuntos = (servidorId: number, datos: { usuario_id: number; cantidad: number; motivo: string }) =>
+  request<Puntaje[]>(`/servidores/${servidorId}/puntos`, { method: 'POST', body: datos })

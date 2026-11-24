@@ -7,7 +7,7 @@
 
 import { useState } from 'react'
 import useSWR from 'swr'
-import { Check, MessageCircle, Newspaper, UserPlus, Users, X } from 'lucide-react'
+import { Check, MessageCircle, Newspaper, Sparkles, UserPlus, Users, X } from 'lucide-react'
 import {
   aceptarSolicitud,
   enviarSolicitud,
@@ -52,9 +52,11 @@ function Globito({ n }: { n: number }) {
 export function InicioSidebar({
   seleccion,
   onSeleccionar,
+  onWrapped,
 }: {
   seleccion: SeleccionInicio
   onSeleccionar: (s: SeleccionInicio) => void
+  onWrapped?: () => void
 }) {
   const { data: conversaciones } = useSWR('conversaciones', getConversaciones, { refreshInterval: 5000 })
   const { data: solicitudes } = useSWR('solicitudes', getSolicitudes, { refreshInterval: 10000 })
@@ -77,6 +79,16 @@ export function InicioSidebar({
           <Newspaper className="size-4" aria-hidden />
           Publicaciones y estados
         </button>
+        {onWrapped && (
+          <button
+            type="button"
+            onClick={onWrapped}
+            className="mt-1 flex w-full items-center gap-2.5 rounded-lg bg-gradient-to-r from-[#ff6b5b] via-[#d9667f] to-[#7c5cff] px-2 py-1.5 text-left text-sm font-semibold text-white transition-opacity hover:opacity-90"
+          >
+            <Sparkles className="size-4" aria-hidden />
+            Tu Kort Wrapped {new Date().getFullYear()}
+          </button>
+        )}
       </div>
 
       <h3 className="px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Mensajes directos</h3>

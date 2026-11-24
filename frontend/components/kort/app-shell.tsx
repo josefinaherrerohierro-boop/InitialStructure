@@ -47,6 +47,7 @@ import { useToast } from './toast-provider'
 import { Avatar, Boton, Logo } from './ui'
 import { UserCard } from './user-card'
 import { VoicePanel, VozBar } from './voice-panel'
+import { WrappedHistoria, WrappedTab } from './wrapped'
 
 type PanelDerecho = 'miembros' | 'fijados' | 'buscar' | 'multimedia' | null
 type ModalAbierto = 'crearServidor' | 'unirme' | 'crearCanal' | 'invitar' | 'configuracion' | 'ajustes' | null
@@ -86,6 +87,7 @@ function AppShellInterno() {
   const [menuAbierto, setMenuAbierto] = useState(false)
   const [modal, setModal] = useState<ModalAbierto>(null)
   const [perfilAbierto, setPerfilAbierto] = useState<number | null>(null)
+  const [wrappedAbierto, setWrappedAbierto] = useState(false)
   // Chat de voz: vive acá para que la llamada siga aunque mires otro canal.
   const voz = useVoz()
 
@@ -319,6 +321,7 @@ function AppShellInterno() {
 
       {mostrarInicio ? (
         <InicioSidebar
+          onWrapped={() => setWrappedAbierto(true)}
           seleccion={seleccionInicio}
           onSeleccionar={(s) => {
             setSeleccionInicio(s)
@@ -569,6 +572,7 @@ function AppShellInterno() {
               <AparienciaTab inicial={preferencias} onGuardado={(p) => mutatePreferencias(p, { revalidate: false })} />
             )
           }
+          wrapped={<WrappedTab />}
           onCerrar={() => setModal(null)}
           onActualizado={() => {
             mutateYo()
@@ -576,6 +580,7 @@ function AppShellInterno() {
           }}
         />
       )}
+      {wrappedAbierto && <WrappedHistoria anio={new Date().getFullYear()} onCerrar={() => setWrappedAbierto(false)} />}
       <PerfilModal
         usuarioId={perfilAbierto}
         onCerrar={() => setPerfilAbierto(null)}

@@ -599,3 +599,36 @@ export const darPuntos = (servidorId: number, datos: { usuario_id: number; canti
 
 export const getPreferencias = () => request<Preferencias>('/preferencias')
 export const guardarPreferencias = (p: Preferencias) => request<Preferencias>('/preferencias', { method: 'PUT', body: p })
+
+// ---------------------------------------------------------------------------
+// Kort Wrapped
+// ---------------------------------------------------------------------------
+
+export type Wrapped = {
+  anio: number
+  username: string
+  total_mensajes: number
+  total_palabras: number
+  total_mensajes_directos: number
+  dias_activos: number
+  racha_mas_larga: number
+  mensajes_por_mes: number[]
+  mes_mas_activo: string | null
+  hora_pico: number | null
+  dia_favorito: string | null
+  canal_favorito: { canal: string; servidor: string; cantidad: number } | null
+  servidores_mas_activos: { nombre: string; cantidad: number }[]
+  emojis_favoritos: { nombre: string; cantidad: number }[]
+  reacciones_recibidas: number
+  persona_favorita: { usuario: UsuarioResumen; cantidad: number } | null
+  amigos_nuevos: number
+  servidores_nuevos: number
+  publicaciones: number
+  likes_recibidos: number
+  tareas_completadas: number
+  eventos_asistidos: number
+  puntos_ganados: number
+  personalidad: { titulo: string; descripcion: string; emoji: string }
+}
+
+export const getWrapped = (anio: number) => request<Wrapped>(`/perfiles/me/wrapped?anio=${anio}`)

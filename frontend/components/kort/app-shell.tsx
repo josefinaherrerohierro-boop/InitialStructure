@@ -13,6 +13,7 @@ import {
   getRoles,
   getFeed,
   getPublicacionesDePerfil,
+  getPreferencias,
   getPublicacionesDeServidor,
   getServidoresDeUsuario,
   getToken,
@@ -21,10 +22,12 @@ import {
   type Servidor,
   type UsuarioResumen,
 } from '@/lib/api'
+import { aplicarApariencia, CLAVE_APARIENCIA, PREFERENCIAS_POR_DEFECTO } from '@/lib/apariencia'
 import { calcularPermisos } from '@/lib/kort'
 import { useVoz } from '@/lib/use-voz'
 import { cn } from '@/lib/utils'
 import { AjustesUsuario } from './ajustes/ajustes-usuario'
+import { AparienciaTab } from './ajustes/apariencia-tab'
 import { CalendarioView } from './calendario'
 import { ChannelList, HERRAMIENTAS, type Herramienta } from './channel-list'
 import { ConfiguracionServidor } from './config/configuracion-servidor'
@@ -96,6 +99,11 @@ function AppShellInterno() {
   }, [router])
 
   const { data: yo, mutate: mutateYo } = useSWR(listo ? 'me' : null, getMe)
+  // Apariencia guardada en la cuenta: se aplica apenas llega.
+  const { data: preferencias, mutate: mutatePreferencias } = useSWR(listo ? 'preferencias' : null, getPreferencias, {
+    onSuccess: aplicarApariencia,
+    revalidateOnFocus: false,
+  })
   const {
     data: servidores,
     isLoading: cargandoServidores,
@@ -200,6 +208,11 @@ function AppShellInterno() {
 
   function salir() {
     voz.salir()
+    // La próxima persona que entre en este navegador arranca con la apariencia original.
+    aplicarApariencia(PREFERENCIAS_POR_DEFECTO)
+    try {
+      window.localStorage.removeItem(CLAVE_APARIENCIA)
+    } catch {}
     clearToken()
     router.replace('/login')
   }
@@ -551,6 +564,11 @@ function AppShellInterno() {
       {modal === 'ajustes' && yo && (
         <AjustesUsuario
           usuario={yo}
+          apariencia={
+            preferencias && (
+              <AparienciaTab inicial={preferencias} onGuardado={(p) => mutatePreferencias(p, { revalidate: false })} />
+            )
+          }
           onCerrar={() => setModal(null)}
           onActualizado={() => {
             mutateYo()

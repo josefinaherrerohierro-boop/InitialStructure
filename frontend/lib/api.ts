@@ -1,3 +1,5 @@
+import type { Preferencias } from './apariencia'
+
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
 export const TOKEN_KEY = 'kort_token'
 
@@ -584,3 +586,10 @@ export const getScoreboard = (servidorId: number) => request<Puntaje[]>(`/servid
 export const getMovimientosPuntos = (servidorId: number) => request<MovimientoPuntos[]>(`/servidores/${servidorId}/puntos`)
 export const darPuntos = (servidorId: number, datos: { usuario_id: number; cantidad: number; motivo: string }) =>
   request<Puntaje[]>(`/servidores/${servidorId}/puntos`, { method: 'POST', body: datos })
+
+// ---------------------------------------------------------------------------
+// Apariencia
+// ---------------------------------------------------------------------------
+
+export const getPreferencias = () => request<Preferencias>('/preferencias')
+export const guardarPreferencias = (p: Preferencias) => request<Preferencias>('/preferencias', { method: 'PUT', body: p })

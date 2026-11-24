@@ -5,7 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--fuente-app), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 
   --color-background: var(--background);
@@ -49,11 +49,70 @@
   --foreground: #ecedef;
   --muted-foreground: #9a9fad;
   --primary: #ff6b5b;
-  --primary-hover: #ff8577;
+  /* El color principal lo puede cambiar cada usuario (ver lib/apariencia.ts). */
+  --primary-hover: color-mix(in srgb, var(--primary) 82%, white);
   --primary-foreground: #15161c;
+  --fuente-app: var(--font-geist-sans);
   --success: #3fb68b;
   --destructive: #e5534b;
   --warning: #e8a33d;
+}
+
+/* ---------- Temas (los elige cada usuario en "Apariencia") ---------- */
+:root[data-tema='medianoche'] {
+  --background: #0b0d17;
+  --surface: #12152a;
+  --elevated: #1a1e3a;
+  --border: #262b4d;
+  --foreground: #e6e8f5;
+  --muted-foreground: #8f95b8;
+}
+
+:root[data-tema='bosque'] {
+  --background: #0f1712;
+  --surface: #16211a;
+  --elevated: #1e2c23;
+  --border: #2a3b30;
+  --foreground: #e6efe8;
+  --muted-foreground: #93a89a;
+}
+
+:root[data-tema='atardecer'] {
+  --background: #1a1216;
+  --surface: #24181e;
+  --elevated: #2f2027;
+  --border: #3e2b33;
+  --foreground: #f3e9ec;
+  --muted-foreground: #b39aa3;
+}
+
+:root[data-tema='claro'] {
+  color-scheme: light;
+  --background: #f6f7f9;
+  --surface: #ffffff;
+  --elevated: #eef0f4;
+  --border: #dde1e8;
+  --foreground: #1b1e27;
+  --muted-foreground: #5f6677;
+  --primary-hover: color-mix(in srgb, var(--primary) 85%, black);
+  --success: #1f9d6e;
+  --destructive: #d33a32;
+  --warning: #b7791f;
+}
+
+/* ---------- Tipografías ---------- */
+:root[data-fuente='inter'] { --fuente-app: var(--font-inter); }
+:root[data-fuente='nunito'] { --fuente-app: var(--font-nunito); }
+:root[data-fuente='lora'] { --fuente-app: var(--font-lora); }
+:root[data-fuente='space-grotesk'] { --fuente-app: var(--font-space-grotesk); }
+:root[data-fuente='atkinson'] { --fuente-app: var(--font-atkinson); }
+:root[data-fuente='mono'] { --fuente-app: var(--font-geist-mono); }
+
+/* ---------- Modo compacto: mensajes más juntos ---------- */
+:root[data-compacto='true'] li.mensaje {
+  margin-top: 0.125rem;
+  padding-top: 0.0625rem;
+  padding-bottom: 0.0625rem;
 }
 
 @layer base {

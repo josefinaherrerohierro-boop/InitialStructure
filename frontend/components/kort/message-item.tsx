@@ -117,7 +117,7 @@ export function MessageItem({
   return (
     <li
       className={cn(
-        'group relative flex gap-3 rounded-lg px-3 transition-colors hover:bg-surface/70',
+        'mensaje group relative flex gap-3 rounded-lg px-3 transition-colors hover:bg-surface/70',
         agrupado ? 'py-0.5' : 'mt-3 py-1.5',
         (editando || confirmarBorrado) && 'bg-surface/70',
         mensaje.fijado && 'border-l-2 border-warning/60',

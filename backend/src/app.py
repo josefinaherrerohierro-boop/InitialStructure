@@ -21,6 +21,7 @@ from src.routers import (
     miembro_router,
     organizacion_router,
     perfil_router,
+    preferencias_router,
     publicacion_router,
     rol_router,
     servidor_router,
@@ -81,6 +82,7 @@ app.include_router(mensaje_directo_router.router, prefix="/api")
 app.include_router(perfil_router.router, prefix="/api")
 app.include_router(publicacion_router.router, prefix="/api")
 app.include_router(organizacion_router.router, prefix="/api")
+app.include_router(preferencias_router.router, prefix="/api")
 # TODO: registrar product_router cuando se implemente
 # app.include_router(product_router.router, prefix="/api")
 

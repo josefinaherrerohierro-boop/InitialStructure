@@ -5,6 +5,7 @@ from src.db.connection import get_db
 from src.db.models.usuario_model import Usuario
 from src.dtos.miembro_dto import MiembroResponseDTO
 from src.middlewares.auth_middleware import get_current_user
+from src.schemas.social_schema import ApodoSchema
 from src.services.miembro_service import MiembroService
 
 router = APIRouter(tags=["miembros"])
@@ -56,3 +57,15 @@ def salir_del_servidor(
     actual: Usuario = Depends(get_current_user),
 ):
     MiembroService(db).salir(servidor_id, actual.id)
+
+
+# Poner o sacar un apodo dentro del servidor (el propio, o el de otro si sos moderador).
+@router.put("/servidores/{servidor_id}/miembros/{usuario_id}/apodo", response_model=MiembroResponseDTO)
+def cambiar_apodo(
+    servidor_id: int,
+    usuario_id: int,
+    payload: ApodoSchema,
+    db: Session = Depends(get_db),
+    actual: Usuario = Depends(get_current_user),
+):
+    return MiembroService(db).cambiar_apodo(servidor_id, usuario_id, payload.apodo, actual.id)

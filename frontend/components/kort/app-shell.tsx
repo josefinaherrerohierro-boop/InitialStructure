@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import useSWR, { SWRConfig } from 'swr'
-import { Hash, Images, Lock, Menu, Pin, Plus, Search, Ticket, Users, Volume2, X } from 'lucide-react'
+import { AtSign, Hash, House, Images, Lock, Menu, Newspaper, Pin, Plus, Search, Ticket, Users, Volume2, X } from 'lucide-react'
 import {
   ApiError,
   clearToken,
@@ -15,26 +15,29 @@ import {
   getToken,
   mensajeDeError,
   type Servidor,
+  type UsuarioResumen,
 } from '@/lib/api'
 import { calcularPermisos } from '@/lib/kort'
 import { useVoz } from '@/lib/use-voz'
 import { cn } from '@/lib/utils'
+import { AjustesUsuario } from './ajustes/ajustes-usuario'
 import { ChannelList } from './channel-list'
 import { ConfiguracionServidor } from './config/configuracion-servidor'
-import { CuentaModal } from './cuenta-modal'
-import { ChatPanel } from './chat-panel'
+import { ChatPanel, DirectoPanel } from './chat-panel'
 import { EmptyState } from './empty-state'
+import { AmigosView, InicioSidebar, usePendientesInicio, type SeleccionInicio } from './inicio'
 import { MembersPanel } from './members-panel'
-import { BusquedaPanel, FijadosPanel, MultimediaPanel } from './paneles-chat'
 import { CrearCanalModal, CrearServidorModal, InvitarModal, UnirmeModal } from './modals'
+import { BusquedaPanel, FijadosPanel, MultimediaPanel } from './paneles-chat'
+import { PerfilModal } from './perfil-modal'
 import { ServerSelector } from './server-selector'
 import { useToast } from './toast-provider'
-import { Boton, Logo } from './ui'
+import { Avatar, Boton, Logo } from './ui'
 import { UserCard } from './user-card'
 import { VoicePanel, VozBar } from './voice-panel'
 
 type PanelDerecho = 'miembros' | 'fijados' | 'buscar' | 'multimedia' | null
-type ModalAbierto = 'crearServidor' | 'unirme' | 'crearCanal' | 'invitar' | 'configuracion' | 'cuenta' | null
+type ModalAbierto = 'crearServidor' | 'unirme' | 'crearCanal' | 'invitar' | 'configuracion' | 'ajustes' | null
 
 export function AppShell() {
   const toast = useToast()
@@ -61,10 +64,13 @@ function AppShellInterno() {
     const v = Number(params.get('servidor'))
     return Number.isFinite(v) && v > 0 ? v : undefined
   })
+  const [enInicio, setEnInicio] = useState(() => params.has('inicio'))
+  const [seleccionInicio, setSeleccionInicio] = useState<SeleccionInicio>({ tipo: 'amigos' })
   const [canalPorServidor, setCanalPorServidor] = useState<Record<number, number>>({})
   const [panel, setPanel] = useState<PanelDerecho>('miembros')
   const [menuAbierto, setMenuAbierto] = useState(false)
   const [modal, setModal] = useState<ModalAbierto>(null)
+  const [perfilAbierto, setPerfilAbierto] = useState<number | null>(null)
   // Chat de voz: vive acá para que la llamada siga aunque mires otro canal.
   const voz = useVoz()
 
@@ -83,10 +89,13 @@ function AppShellInterno() {
     isLoading: cargandoServidores,
     mutate: mutateServidores,
   } = useSWR(yo ? ['servidores', yo.id] : null, () => getServidoresDeUsuario(yo!.id))
+  const pendientesInicio = usePendientesInicio(!!yo && !enInicio)
+
+  const mostrarInicio = enInicio
 
   const servidor = useMemo(
-    () => servidores?.find((s) => s.id === servidorElegido) ?? servidores?.[0],
-    [servidores, servidorElegido],
+    () => (mostrarInicio ? undefined : (servidores?.find((s) => s.id === servidorElegido) ?? servidores?.[0])),
+    [servidores, servidorElegido, mostrarInicio],
   )
 
   const { data: canales, isLoading: cargandoCanales, mutate: mutateCanales } = useSWR(
@@ -111,9 +120,22 @@ function AppShellInterno() {
   }, [servidor, canales, canalPorServidor])
 
   function seleccionarServidor(id: number) {
+    setEnInicio(false)
     setServidorElegido(id)
     setMenuAbierto(false)
     router.replace(`/app?servidor=${id}`, { scroll: false })
+  }
+
+  function irAInicio(seleccion?: SeleccionInicio) {
+    setEnInicio(true)
+    if (seleccion) setSeleccionInicio(seleccion)
+    setMenuAbierto(false)
+    router.replace('/app?inicio', { scroll: false })
+  }
+
+  function abrirDirecto(usuario: UsuarioResumen) {
+    setPerfilAbierto(null)
+    irAInicio({ tipo: 'dm', usuario })
   }
 
   function seleccionarCanal(id: number) {
@@ -168,7 +190,16 @@ function AppShellInterno() {
     ? null
     : panel === 'miembros'
       ? (
-          <MembersPanel miembros={miembros} cargando={cargandoMiembros} miId={yo?.id} onCerrar={() => setPanel(null)} />
+          <MembersPanel
+            miembros={miembros}
+            cargando={cargandoMiembros}
+            miId={yo?.id}
+            servidorId={servidor.id}
+            puedeModerar={permisos.esModerador}
+            onVerPerfil={setPerfilAbierto}
+            onCambio={() => mutateMiembros()}
+            onCerrar={() => setPanel(null)}
+          />
         )
       : panel === 'fijados' && canal?.tipo === 'texto'
         ? <FijadosPanel canal={canal} onCerrar={() => setPanel(null)} />
@@ -186,7 +217,7 @@ function AppShellInterno() {
             : null
 
   const sidebar = (
-    <div className="flex h-full flex-col gap-5 p-3">
+    <div className="flex h-full flex-col gap-4 p-3">
       <div className="flex items-center justify-between px-2 pt-1">
         <Logo className="text-2xl" />
         <button
@@ -198,6 +229,26 @@ function AppShellInterno() {
           <X className="size-5" />
         </button>
       </div>
+
+      <button
+        type="button"
+        onClick={() => irAInicio()}
+        aria-current={mostrarInicio ? 'true' : undefined}
+        className={cn(
+          'flex items-center gap-3 rounded-lg px-2 py-1.5 text-sm transition-colors',
+          mostrarInicio ? 'bg-primary/12 font-medium text-foreground' : 'text-muted-foreground hover:bg-elevated hover:text-foreground',
+        )}
+      >
+        <span className="flex size-7 items-center justify-center rounded-lg bg-primary/15 text-primary">
+          <House className="size-4" aria-hidden />
+        </span>
+        Inicio
+        {pendientesInicio > 0 && (
+          <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[11px] font-semibold text-white">
+            {pendientesInicio > 99 ? '99+' : pendientesInicio}
+          </span>
+        )}
+      </button>
 
       <ServerSelector
         servidores={servidores}
@@ -220,7 +271,15 @@ function AppShellInterno() {
 
       <div className="h-px bg-border" aria-hidden />
 
-      {servidor ? (
+      {mostrarInicio ? (
+        <InicioSidebar
+          seleccion={seleccionInicio}
+          onSeleccionar={(s) => {
+            setSeleccionInicio(s)
+            setMenuAbierto(false)
+          }}
+        />
+      ) : servidor ? (
         <ChannelList
           servidor={servidor}
           canales={canales}
@@ -237,9 +296,101 @@ function AppShellInterno() {
       )}
 
       <VozBar voz={voz} />
-      <UserCard usuario={yo} onSalir={salir} onCuenta={() => setModal('cuenta')} />
+      <UserCard usuario={yo} onSalir={salir} onCuenta={() => setModal('ajustes')} />
     </div>
   )
+
+  // ---------- Encabezado y contenido principal ----------
+  let encabezado: React.ReactNode
+  let contenido: React.ReactNode
+
+  if (mostrarInicio) {
+    if (seleccionInicio.tipo === 'dm') {
+      const u = seleccionInicio.usuario
+      encabezado = (
+        <button type="button" onClick={() => setPerfilAbierto(u.id)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+          <AtSign className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+          <Avatar nombre={u.username} url={u.avatar_url} tamanio="sm" />
+          <h1 className="truncate font-semibold hover:underline">{u.username}</h1>
+        </button>
+      )
+      contenido = yo && <DirectoPanel key={u.id} usuario={u} yo={yo} onVerPerfil={setPerfilAbierto} />
+    } else if (seleccionInicio.tipo === 'feed') {
+      encabezado = (
+        <div className="flex flex-1 items-center gap-2">
+          <Newspaper className="size-4 text-muted-foreground" aria-hidden />
+          <h1 className="font-semibold">Publicaciones y estados</h1>
+        </div>
+      )
+      contenido = (
+        <div className="flex flex-1 items-center justify-center p-8 text-sm text-muted-foreground">Próximamente.</div>
+      )
+    } else {
+      encabezado = (
+        <div className="flex flex-1 items-center gap-2">
+          <Users className="size-4 text-muted-foreground" aria-hidden />
+          <h1 className="font-semibold">Amigos</h1>
+        </div>
+      )
+      contenido = <AmigosView onMensaje={abrirDirecto} onVerPerfil={setPerfilAbierto} />
+    }
+  } else {
+    encabezado = (
+      <>
+        {canal ? (
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            {canal.tipo === 'voz' ? (
+              <Volume2 className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+            ) : (
+              <Hash className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+            )}
+            <h1 className="truncate font-semibold">{canal.nombre}</h1>
+            {canal.solo_lectura && (
+              <span className="flex shrink-0 items-center gap-1 rounded-md bg-elevated px-1.5 py-0.5 text-[11px] text-muted-foreground">
+                <Lock className="size-3" aria-hidden />
+                Solo lectura
+              </span>
+            )}
+            <span className="hidden truncate text-sm text-muted-foreground sm:inline">· {servidor?.nombre}</span>
+          </div>
+        ) : (
+          <h1 className="flex-1 truncate font-semibold">{servidor?.nombre ?? 'Kort'}</h1>
+        )}
+        {servidor && (
+          <div className="flex shrink-0 items-center gap-0.5">
+            {canal?.tipo === 'texto' && (
+              <BotonPanel icono={Pin} etiqueta="Fijados" activo={panel === 'fijados'} onClick={() => alternarPanel('fijados')} />
+            )}
+            <BotonPanel icono={Search} etiqueta="Buscar" activo={panel === 'buscar'} onClick={() => alternarPanel('buscar')} />
+            <BotonPanel
+              icono={Images}
+              etiqueta="Multimedia"
+              activo={panel === 'multimedia'}
+              onClick={() => alternarPanel('multimedia')}
+            />
+            <BotonPanel icono={Users} etiqueta="Miembros" activo={panel === 'miembros'} onClick={() => alternarPanel('miembros')} />
+          </div>
+        )}
+      </>
+    )
+    contenido = sinServidores ? (
+      <EmptyState onCrear={() => setModal('crearServidor')} onUnirme={() => setModal('unirme')} />
+    ) : canal && yo ? (
+      canal.tipo === 'voz' ? (
+        <VoicePanel canal={canal} yo={yo} voz={voz} />
+      ) : (
+        <ChatPanel key={canal.id} canal={canal} yo={yo} permisos={permisos} onVerPerfil={setPerfilAbierto} />
+      )
+    ) : canales && canales.length === 0 ? (
+      <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-muted-foreground">
+        Este servidor todavía no tiene canales.
+      </div>
+    ) : (
+      <div className="flex flex-1 items-center justify-center">
+        <Logo className="animate-pulse text-3xl opacity-60" />
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-dvh overflow-hidden">
@@ -271,64 +422,13 @@ function AppShellInterno() {
           >
             <Menu className="size-5" />
           </button>
-          {canal ? (
-            <div className="flex min-w-0 flex-1 items-center gap-2">
-              {canal.tipo === 'voz' ? (
-                <Volume2 className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-              ) : (
-                <Hash className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-              )}
-              <h1 className="truncate font-semibold">{canal.nombre}</h1>
-              {canal.solo_lectura && (
-                <span className="flex shrink-0 items-center gap-1 rounded-md bg-elevated px-1.5 py-0.5 text-[11px] text-muted-foreground">
-                  <Lock className="size-3" aria-hidden />
-                  Solo lectura
-                </span>
-              )}
-              <span className="hidden truncate text-sm text-muted-foreground sm:inline">· {servidor?.nombre}</span>
-            </div>
-          ) : (
-            <h1 className="flex-1 truncate font-semibold">{servidor?.nombre ?? 'Kort'}</h1>
-          )}
-          {servidor && (
-            <div className="flex shrink-0 items-center gap-0.5">
-              {canal?.tipo === 'texto' && (
-                <BotonPanel icono={Pin} etiqueta="Fijados" activo={panel === 'fijados'} onClick={() => alternarPanel('fijados')} />
-              )}
-              <BotonPanel icono={Search} etiqueta="Buscar" activo={panel === 'buscar'} onClick={() => alternarPanel('buscar')} />
-              <BotonPanel
-                icono={Images}
-                etiqueta="Multimedia"
-                activo={panel === 'multimedia'}
-                onClick={() => alternarPanel('multimedia')}
-              />
-              <BotonPanel icono={Users} etiqueta="Miembros" activo={panel === 'miembros'} onClick={() => alternarPanel('miembros')} />
-            </div>
-          )}
+          {encabezado}
         </header>
 
         <div className="flex min-h-0 flex-1">
-          <div className="flex min-w-0 flex-1 flex-col">
-            {sinServidores ? (
-              <EmptyState onCrear={() => setModal('crearServidor')} onUnirme={() => setModal('unirme')} />
-            ) : canal && yo ? (
-              canal.tipo === 'voz' ? (
-                <VoicePanel canal={canal} yo={yo} voz={voz} />
-              ) : (
-                <ChatPanel key={canal.id} canal={canal} yo={yo} permisos={permisos} />
-              )
-            ) : canales && canales.length === 0 ? (
-              <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-muted-foreground">
-                Este servidor todavía no tiene canales.
-              </div>
-            ) : (
-              <div className="flex flex-1 items-center justify-center">
-                <Logo className="animate-pulse text-3xl opacity-60" />
-              </div>
-            )}
-          </div>
+          <div className="flex min-w-0 flex-1 flex-col">{contenido}</div>
 
-          {servidor && panelContenido && (
+          {!mostrarInicio && servidor && panelContenido && (
             <>
               <div className="hidden lg:block">{panelContenido}</div>
               <div className="fixed inset-y-0 right-0 z-30 shadow-2xl shadow-black/50 lg:hidden">{panelContenido}</div>
@@ -366,15 +466,17 @@ function AppShellInterno() {
           )}
         </>
       )}
-      {yo && (
-        <CuentaModal
-          key={`${yo.id}-${yo.username}-${yo.email}`}
-          abierto={modal === 'cuenta'}
+      {modal === 'ajustes' && yo && (
+        <AjustesUsuario
           usuario={yo}
           onCerrar={() => setModal(null)}
-          onActualizado={() => mutateYo()}
+          onActualizado={() => {
+            mutateYo()
+            mutateMiembros()
+          }}
         />
       )}
+      <PerfilModal usuarioId={perfilAbierto} onCerrar={() => setPerfilAbierto(null)} onMensaje={abrirDirecto} />
     </div>
   )
 }

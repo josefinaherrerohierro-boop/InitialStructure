@@ -9,6 +9,7 @@ from src.dtos.servidor_dto import (
 )
 from src.mappers.servidor_mapper import to_servidor_response
 from src.repositories.canal_repository import CanalRepository
+from src.repositories.historial_repository import HistorialRepository
 from src.repositories.miembro_repository import MiembroRepository
 from src.repositories.rol_repository import RolRepository
 from src.repositories.servidor_repository import ServidorRepository
@@ -26,6 +27,7 @@ class ServidorService:
         self.roles = RolRepository(db)
         self.miembros = MiembroRepository(db)
         self.permisos = PermisosService(db)
+        self.historial = HistorialRepository(db)
 
     # ---------- HU2: crear servidor ----------
     def create(self, dto: CreateServidorDTO, usuario_id: int) -> ServidorResponseDTO:
@@ -45,6 +47,7 @@ class ServidorService:
                 servidor_id=servidor.id, nombre=ROL_EVERYONE, puede_escribir=True
             )
             self.roles.asignar(usuario_id=usuario_id, rol_id=everyone.id)
+            self.historial.abrir(usuario_id, servidor)
             self.db.commit()
         except Exception:
             self.db.rollback()
@@ -80,6 +83,7 @@ class ServidorService:
     def delete(self, servidor_id: int, actual_id: int) -> None:
         servidor = self.permisos.obtener_servidor(servidor_id)
         self.permisos.exigir_duenio(servidor, actual_id)
+        self.historial.cerrar_todos(servidor, "servidor_borrado")
         self.servidores.delete(servidor)
         self.db.commit()
 

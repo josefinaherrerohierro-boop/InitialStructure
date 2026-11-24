@@ -10,6 +10,8 @@ def to_miembro_response(
     return MiembroResponseDTO(
         usuario_id=usuario.id,
         username=usuario.username,
+        apodo=miembro.apodo,
+        avatar_url=usuario.avatar_url,
         fecha_union=miembro.fecha_union,
         es_duenio=es_duenio,
         roles=[RolResumenDTO.model_validate(r) for r in roles],

@@ -3,14 +3,28 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import useSWR from 'swr'
 import { CircleAlert, Lock } from 'lucide-react'
-import { enviarMensaje, getMensajes, mensajeDeError, type Canal, type Mensaje, type Usuario } from '@/lib/api'
+import {
+  borrarMensajeDirecto,
+  directoComoMensaje,
+  editarMensajeDirecto,
+  enviarMensaje,
+  enviarMensajeDirecto,
+  getMensajes,
+  getMensajesDirectos,
+  mensajeDeError,
+  type Adjunto,
+  type Canal,
+  type Mensaje,
+  type Usuario,
+  type UsuarioResumen,
+} from '@/lib/api'
 import { parseFecha } from '@/lib/kort'
 import type { Permisos } from '@/lib/kort'
 import { useToast } from './toast-provider'
 import { Composer } from './composer'
 import { CrearEncuestaModal } from './encuesta-modal'
 import { MessageItem } from './message-item'
-import { Boton } from './ui'
+import { Avatar, Boton } from './ui'
 
 const LIMITE = 50
 const AGRUPAR_MS = 5 * 60 * 1000
@@ -28,19 +42,37 @@ function combinar(base: Map<number, Mensaje>, recientes: Mensaje[]): Map<number,
   return res
 }
 
-export function ChatPanel({
-  canal,
+/**
+ * Vista de chat genérica: la usan los canales de texto y los mensajes directos.
+ * Pide los mensajes nuevos cada 3 segundos y permite cargar los anteriores.
+ */
+function ChatVista({
+  claveSWR,
+  cargar,
   yo,
-  permisos,
-  onVerPerfil,
+  encabezadoVacio,
+  puedeEscribir,
+  avisoSinPermiso,
+  destino,
+  enviar,
+  onEncuesta,
+  itemProps,
+  extra,
 }: {
-  canal: Canal
+  claveSWR: unknown[]
+  cargar: (opciones: { limite: number; antes_de?: number }) => Promise<Mensaje[]>
   yo: Usuario
-  permisos: Permisos
-  onVerPerfil?: (usuarioId: number) => void
+  encabezadoVacio: React.ReactNode
+  puedeEscribir: boolean
+  avisoSinPermiso: string
+  destino: string
+  enviar: (contenido: string, adjunto: Adjunto | null) => Promise<Mensaje>
+  onEncuesta?: () => void
+  itemProps: (m: Mensaje) => Partial<React.ComponentProps<typeof MessageItem>>
+  /** Para recibir la función que agrega un mensaje (lo usa el modal de encuestas). */
+  extra?: (agregar: (m: Mensaje) => void) => React.ReactNode
 }) {
   const toast = useToast()
-  const [creandoEncuesta, setCreandoEncuesta] = useState(false)
   const [vistos, setVistos] = useState<Map<number, Mensaje>>(() => new Map())
   const [hayAnteriores, setHayAnteriores] = useState<boolean | null>(null)
   const [cargandoAnteriores, setCargandoAnteriores] = useState(false)
@@ -54,7 +86,7 @@ export function ChatPanel({
     error,
     isLoading,
     mutate,
-  } = useSWR(['mensajes', canal.id], () => getMensajes(canal.id, { limite: LIMITE }), {
+  } = useSWR(claveSWR, () => cargar({ limite: LIMITE }), {
     refreshInterval: 3000,
     onError: () => {},
     onSuccess: (data) => setVistos((prev) => combinar(prev, data)),
@@ -87,7 +119,7 @@ export function ChatPanel({
     if (primerId === undefined) return
     setCargandoAnteriores(true)
     try {
-      const viejos = await getMensajes(canal.id, { limite: LIMITE, antes_de: primerId })
+      const viejos = await cargar({ limite: LIMITE, antes_de: primerId })
       const el = scrollRef.current
       if (el) alturaPrevia.current = el.scrollHeight - el.scrollTop
       setVistos((prev) => {
@@ -122,10 +154,6 @@ export function ChatPanel({
     })
     mutate((cur) => cur?.filter((x) => x.id !== id), { revalidate: true })
   }
-
-  // Igual que en el backend (HU7): hace falta un rol con puede_escribir y,
-  // si el canal es de solo lectura, además ser dueño o moderador.
-  const puedeEscribir = permisos.puedeEscribir && (!canal.solo_lectura || permisos.esModerador)
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -168,14 +196,9 @@ export function ChatPanel({
             ))}
           </ul>
         ) : mensajes.length === 0 && !error ? (
-          <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
-            <p className="text-lg font-semibold">Este es el comienzo de #{canal.nombre}</p>
-            <p className="text-sm text-muted-foreground">
-              {puedeEscribir ? 'Todavía no hay mensajes. ¡Rompé el hielo!' : 'Todavía no hay mensajes.'}
-            </p>
-          </div>
+          <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">{encabezadoVacio}</div>
         ) : (
-          <ul className="flex flex-col" aria-label={`Mensajes de #${canal.nombre}`}>
+          <ul className="flex flex-col" aria-label={`Mensajes con ${destino}`}>
             {mensajes.map((m, i) => {
               const anterior = mensajes[i - 1]
               const agrupado =
@@ -190,11 +213,10 @@ export function ChatPanel({
                   agrupado={agrupado}
                   miId={yo.id}
                   puedeEditar={propio}
-                  puedeBorrar={propio || permisos.esModerador}
-                  puedeFijar={permisos.esModerador}
-                  onVerPerfil={onVerPerfil}
+                  puedeBorrar={propio}
                   onEditado={alEditar}
                   onBorrado={alBorrar}
+                  {...itemProps(m)}
                 />
               )
             })}
@@ -203,29 +225,106 @@ export function ChatPanel({
       </div>
 
       {puedeEscribir ? (
-        <>
-          <Composer
-            key={canal.id}
-            destino={`#${canal.nombre}`}
-            onEnviar={(contenido, adjunto) => enviarMensaje(canal.id, contenido, adjunto)}
-            onEnviado={alEnviar}
-            onEncuesta={() => setCreandoEncuesta(true)}
-          />
-          <CrearEncuestaModal
-            abierto={creandoEncuesta}
-            canalId={canal.id}
-            onCerrar={() => setCreandoEncuesta(false)}
-            onCreada={alEnviar}
-          />
-        </>
+        <Composer destino={destino} onEnviar={enviar} onEnviado={alEnviar} onEncuesta={onEncuesta} />
       ) : (
         <div className="px-4 pb-4">
           <div className="flex items-center gap-2.5 rounded-xl border border-border bg-surface px-4 py-3.5 text-sm text-muted-foreground">
             <Lock className="size-4 shrink-0" aria-hidden />
-            {canal.solo_lectura ? 'Este canal es de solo lectura' : 'No tenés permiso para escribir'}
+            {avisoSinPermiso}
           </div>
         </div>
       )}
+      {extra?.(alEnviar)}
     </div>
+  )
+}
+
+/** Chat de un canal de texto de un servidor. */
+export function ChatPanel({
+  canal,
+  yo,
+  permisos,
+  onVerPerfil,
+}: {
+  canal: Canal
+  yo: Usuario
+  permisos: Permisos
+  onVerPerfil?: (usuarioId: number) => void
+}) {
+  const [creandoEncuesta, setCreandoEncuesta] = useState(false)
+  // Igual que en el backend (HU7): hace falta un rol con puede_escribir y,
+  // si el canal es de solo lectura, además ser dueño o moderador.
+  const puedeEscribir = permisos.puedeEscribir && (!canal.solo_lectura || permisos.esModerador)
+
+  return (
+    <ChatVista
+      claveSWR={['mensajes', canal.id]}
+      cargar={(o) => getMensajes(canal.id, o)}
+      yo={yo}
+      destino={`#${canal.nombre}`}
+      encabezadoVacio={
+        <>
+          <p className="text-lg font-semibold">Este es el comienzo de #{canal.nombre}</p>
+          <p className="text-sm text-muted-foreground">
+            {puedeEscribir ? 'Todavía no hay mensajes. ¡Rompé el hielo!' : 'Todavía no hay mensajes.'}
+          </p>
+        </>
+      }
+      puedeEscribir={puedeEscribir}
+      avisoSinPermiso={canal.solo_lectura ? 'Este canal es de solo lectura' : 'No tenés permiso para escribir'}
+      enviar={(contenido, adjunto) => enviarMensaje(canal.id, contenido, adjunto)}
+      onEncuesta={() => setCreandoEncuesta(true)}
+      itemProps={(m) => ({
+        puedeBorrar: m.autor_id === yo.id || permisos.esModerador,
+        puedeFijar: permisos.esModerador,
+        onVerPerfil,
+      })}
+      extra={(agregar) => (
+        <CrearEncuestaModal
+          abierto={creandoEncuesta}
+          canalId={canal.id}
+          onCerrar={() => setCreandoEncuesta(false)}
+          onCreada={agregar}
+        />
+      )}
+    />
+  )
+}
+
+/** Chat privado con otro usuario. */
+export function DirectoPanel({
+  usuario,
+  yo,
+  onVerPerfil,
+}: {
+  usuario: UsuarioResumen
+  yo: Usuario
+  onVerPerfil?: (usuarioId: number) => void
+}) {
+  return (
+    <ChatVista
+      claveSWR={['directos', usuario.id]}
+      cargar={async (o) => (await getMensajesDirectos(usuario.id, o)).map(directoComoMensaje)}
+      yo={yo}
+      destino={`@${usuario.username}`}
+      encabezadoVacio={
+        <>
+          <Avatar nombre={usuario.username} url={usuario.avatar_url} tamanio="xl" />
+          <p className="mt-2 text-lg font-semibold">{usuario.username}</p>
+          <p className="text-sm text-muted-foreground">
+            Este es el comienzo de tu conversación con {usuario.username}.
+          </p>
+        </>
+      }
+      puedeEscribir
+      avisoSinPermiso=""
+      enviar={async (contenido, adjunto) => directoComoMensaje(await enviarMensajeDirecto(usuario.id, contenido, adjunto))}
+      itemProps={() => ({
+        puedeReaccionar: false,
+        onVerPerfil,
+        editar: async (id, contenido) => directoComoMensaje(await editarMensajeDirecto(id, contenido)),
+        borrar: borrarMensajeDirecto,
+      })}
+    />
   )
 }

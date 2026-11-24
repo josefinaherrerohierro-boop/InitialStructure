@@ -57,8 +57,8 @@ class MiembroRepository:
             .all()
         )
 
-    def comparten_servidor(self, usuario_a: int, usuario_b: int) -> bool:
-        """True si los dos usuarios son miembros (no baneados) de algún mismo servidor."""
+    def servidores_en_comun(self, usuario_a: int, usuario_b: int) -> int:
+        """Cantidad de servidores donde los dos son miembros (no baneados)."""
         otro = aliased(Miembro)
         return (
             self.db.query(Miembro)
@@ -69,8 +69,7 @@ class MiembroRepository:
                 Miembro.baneado.is_(False),
                 otro.baneado.is_(False),
             )
-            .first()
-            is not None
+            .count()
         )
 
     def marcar_baneado(self, miembro: Miembro) -> None:

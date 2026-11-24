@@ -112,3 +112,13 @@ INSERT INTO mensajes (canal_id, autor_id, contenido, fecha, editado) VALUES
 (3, 1, 'Yo me sumo.',                                           CURRENT_TIMESTAMP - INTERVAL '8 days',  FALSE),
 (4, 4, 'Primer mensaje del club de robótica.',                  CURRENT_TIMESTAMP - INTERVAL '50 days', FALSE),
 (5, 5, 'Votemos el libro del mes.', CURRENT_TIMESTAMP - INTERVAL '30 days', FALSE);
+
+
+-- HISTORIAL DE SERVIDORES ---------------------------------------------
+-- Una fila por cada membresía de arriba (los baneados ya salieron).
+INSERT INTO historial_servidores (usuario_id, servidor_id, servidor_nombre, fecha_union, fecha_salida, motivo_salida)
+SELECT m.usuario_id, m.servidor_id, s.nombre, m.fecha_union,
+       CASE WHEN m.baneado THEN CURRENT_TIMESTAMP - INTERVAL '19 days' END,
+       CASE WHEN m.baneado THEN 'baneado' END
+FROM miembros m
+JOIN servidores s ON s.id = m.servidor_id;

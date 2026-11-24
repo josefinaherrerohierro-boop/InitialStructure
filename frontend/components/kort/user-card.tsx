@@ -16,7 +16,7 @@ export function UserCard({
   return (
     <div className="flex items-center gap-3 rounded-xl border border-border bg-elevated/60 p-2.5">
       {usuario ? (
-        <Avatar nombre={usuario.username} />
+        <Avatar nombre={usuario.username} url={usuario.avatar_url} />
       ) : (
         <span className="size-9 animate-pulse rounded-lg bg-border" aria-hidden />
       )}
@@ -29,8 +29,8 @@ export function UserCard({
         onClick={onCuenta}
         disabled={!usuario}
         className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-border/60 hover:text-foreground"
-        aria-label="Mi cuenta"
-        title="Mi cuenta"
+        aria-label="Configuración de usuario"
+        title="Configuración de usuario"
       >
         <UserCog className="size-4" />
       </button>

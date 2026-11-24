@@ -4,8 +4,10 @@ from src.db.models.miembro_model import Miembro
 from src.db.models.servidor_model import Servidor
 from src.dtos.miembro_dto import MiembroResponseDTO
 from src.mappers.miembro_mapper import to_miembro_response
+from src.repositories.historial_repository import HistorialRepository
 from src.repositories.miembro_repository import MiembroRepository
 from src.repositories.rol_repository import RolRepository
+from src.repositories.usuario_repository import UsuarioRepository
 from src.services.permisos_service import PermisosService
 from src.utils.errors import ConflictError, ForbiddenError, NotFoundError, UnprocessableError
 
@@ -18,6 +20,7 @@ class MiembroService:
         self.miembros = MiembroRepository(db)
         self.roles = RolRepository(db)
         self.permisos = PermisosService(db)
+        self.historial = HistorialRepository(db)
 
     # ---------- Lista de miembros ----------
     def list_by_servidor(self, servidor_id: int, actual_id: int) -> list[MiembroResponseDTO]:
@@ -39,6 +42,7 @@ class MiembroService:
 
         self.roles.quitar_todos_en_servidor(usuario_id, servidor.id)
         self.miembros.delete(miembro)
+        self.historial.cerrar(usuario_id, servidor.id, "expulsado")
         self.db.commit()
 
     # ---------- HU9: banear ----------
@@ -49,6 +53,7 @@ class MiembroService:
 
         self.roles.quitar_todos_en_servidor(usuario_id, servidor.id)
         self.miembros.marcar_baneado(miembro)
+        self.historial.cerrar(usuario_id, servidor.id, "baneado")
         self.db.commit()
 
     # ---------- HU10: salir del servidor ----------
@@ -66,7 +71,33 @@ class MiembroService:
         # Al salir se le quitan sus roles de ese servidor.
         self.roles.quitar_todos_en_servidor(actual_id, servidor.id)
         self.miembros.delete(miembro)
+        self.historial.cerrar(actual_id, servidor.id, "salio")
         self.db.commit()
+
+    # ---------- Apodos ----------
+    def cambiar_apodo(self, servidor_id: int, usuario_id: int, apodo: str | None, actual_id: int) -> MiembroResponseDTO:
+        """Cada uno cambia su propio apodo. Un moderador puede cambiar el de
+        otros, pero el del dueño solo lo cambia el dueño."""
+        servidor = self.permisos.obtener_servidor(servidor_id)
+        self.permisos.exigir_miembro(servidor.id, actual_id)
+        if usuario_id != actual_id:
+            self.permisos.exigir_moderador(servidor, actual_id)
+            if self.permisos.es_duenio(servidor, usuario_id):
+                raise ForbiddenError("Solo el dueño puede cambiar su propio apodo")
+
+        miembro = self.miembros.find(usuario_id, servidor.id)
+        if miembro is None or miembro.baneado:
+            raise NotFoundError("Ese usuario no es miembro de este servidor")
+
+        apodo = " ".join((apodo or "").split()) or None
+        if apodo is not None and len(apodo) > 32:
+            raise UnprocessableError("El apodo puede tener hasta 32 caracteres")
+        self.miembros.update(miembro, apodo=apodo)
+        self.db.commit()
+
+        usuario = UsuarioRepository(self.db).find_by_id(usuario_id)
+        roles = self.roles.roles_de_usuario(servidor.id, usuario_id)
+        return to_miembro_response(miembro, usuario, roles, es_duenio=servidor.duenio_id == usuario_id)
 
     # ---------- Ayudas internas ----------
     def _validar_moderacion(

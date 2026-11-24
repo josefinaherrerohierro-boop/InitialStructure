@@ -8,6 +8,7 @@ from src.dtos.invitacion_dto import CreateInvitacionDTO, InvitacionResponseDTO
 from src.dtos.servidor_dto import ServidorResponseDTO
 from src.mappers.invitacion_mapper import to_invitacion_response
 from src.mappers.servidor_mapper import to_servidor_response
+from src.repositories.historial_repository import HistorialRepository
 from src.repositories.invitacion_repository import InvitacionRepository
 from src.repositories.miembro_repository import MiembroRepository
 from src.repositories.rol_repository import RolRepository
@@ -89,6 +90,7 @@ class InvitacionService:
             if not self.invitaciones.sumar_uso(invitacion.id):
                 raise UnprocessableError("La invitación ya alcanzó su máximo de usos")
             self.miembros.create(usuario_id=actual_id, servidor_id=servidor.id)
+            HistorialRepository(self.db).abrir(actual_id, servidor)
             if everyone is not None:
                 self.roles.asignar(usuario_id=actual_id, rol_id=everyone.id)
             self.db.commit()

@@ -22,5 +22,7 @@ class UsuarioResponseDTO(BaseModel):
     email: str
     username: str
     fecha_registro: datetime
+    bio: str | None = None
+    avatar_url: str | None = None
 
     model_config = {"from_attributes": True}

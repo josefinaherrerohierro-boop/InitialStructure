@@ -5,13 +5,16 @@ from fastapi.staticfiles import StaticFiles
 from src.config.env import settings
 from src.middlewares.error_middleware import app_error_handler
 from src.routers import (
+    amistad_router,
     archivo_router,
     auth_router,
     canal_router,
     estadisticas_router,
     invitacion_router,
+    mensaje_directo_router,
     mensaje_router,
     miembro_router,
+    perfil_router,
     rol_router,
     servidor_router,
     usuario_router,
@@ -45,6 +48,9 @@ app.include_router(mensaje_router.router, prefix="/api")
 app.include_router(estadisticas_router.router, prefix="/api")
 app.include_router(voz_router.router, prefix="/api")
 app.include_router(archivo_router.router, prefix="/api")
+app.include_router(amistad_router.router, prefix="/api")
+app.include_router(mensaje_directo_router.router, prefix="/api")
+app.include_router(perfil_router.router, prefix="/api")
 # TODO: registrar product_router cuando se implemente
 # app.include_router(product_router.router, prefix="/api")
 

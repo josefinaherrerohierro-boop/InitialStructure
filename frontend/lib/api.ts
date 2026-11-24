@@ -370,3 +370,92 @@ export const crearEncuesta = (
 
 export const votarEncuesta = (encuestaId: number, opcionIds: number[]) =>
   request<Mensaje>(`/encuestas/${encuestaId}/votar`, { method: 'POST', body: { opcion_ids: opcionIds } })
+
+// ---------------------------------------------------------------------------
+// Social: amigos, mensajes directos, perfil, apodos e historial
+// ---------------------------------------------------------------------------
+
+export type UsuarioResumen = { id: number; username: string; avatar_url: string | null; bio: string | null }
+export type Amigo = { usuario: UsuarioResumen; desde: string }
+export type Solicitud = { id: number; usuario: UsuarioResumen; fecha: string }
+export type Solicitudes = { recibidas: Solicitud[]; enviadas: Solicitud[] }
+
+export const getAmigos = () => request<Amigo[]>('/amigos')
+export const getSolicitudes = () => request<Solicitudes>('/amigos/solicitudes')
+export const enviarSolicitud = (username: string) =>
+  request<{ estado: 'enviada' | 'amigos' }>('/amigos/solicitudes', { method: 'POST', body: { username } })
+export const aceptarSolicitud = (id: number) => request<void>(`/amigos/solicitudes/${id}/aceptar`, { method: 'POST' })
+export const rechazarSolicitud = (id: number) => request<void>(`/amigos/solicitudes/${id}`, { method: 'DELETE' })
+export const eliminarAmigo = (usuarioId: number) => request<void>(`/amigos/${usuarioId}`, { method: 'DELETE' })
+
+export type MensajeDirecto = {
+  id: number
+  autor_id: number
+  destinatario_id: number
+  autor_username: string
+  autor_avatar_url: string | null
+  contenido: string
+  fecha: string
+  editado: boolean
+  leido: boolean
+  adjunto: Adjunto | null
+}
+export type Conversacion = { usuario: UsuarioResumen; ultimo_mensaje: MensajeDirecto; no_leidos: number }
+
+/** Un mensaje directo con la forma de un mensaje de canal (para reusar la vista del chat). */
+export function directoComoMensaje(m: MensajeDirecto): Mensaje {
+  return { ...m, canal_id: 0, autor_apodo: null, fijado: false, reacciones: [], encuesta: null }
+}
+
+export const getConversaciones = () => request<Conversacion[]>('/mensajes-directos')
+
+export function getMensajesDirectos(usuarioId: number, opciones: { limite?: number; antes_de?: number } = {}) {
+  const params = new URLSearchParams({ limite: String(opciones.limite ?? 50) })
+  if (opciones.antes_de !== undefined) params.set('antes_de', String(opciones.antes_de))
+  return request<MensajeDirecto[]>(`/mensajes-directos/${usuarioId}?${params.toString()}`)
+}
+
+export const enviarMensajeDirecto = (usuarioId: number, contenido: string, adjunto?: Adjunto | null) =>
+  request<MensajeDirecto>(`/mensajes-directos/${usuarioId}`, { method: 'POST', body: { contenido, adjunto: adjunto ?? null } })
+
+export const editarMensajeDirecto = (id: number, contenido: string) =>
+  request<MensajeDirecto>(`/mensajes-directos/mensaje/${id}`, { method: 'PATCH', body: { contenido } })
+
+export const borrarMensajeDirecto = (id: number) => request<void>(`/mensajes-directos/mensaje/${id}`, { method: 'DELETE' })
+
+export type RedSocial = { red: string; url: string }
+export type FotoPerfil = { id: number; url: string; principal: boolean }
+export type Relacion = 'yo' | 'amigos' | 'enviada' | 'recibida' | 'ninguna'
+export type Perfil = {
+  id: number
+  username: string
+  bio: string | null
+  avatar_url: string | null
+  fecha_registro: string
+  etiquetas: string[]
+  redes: RedSocial[]
+  fotos: FotoPerfil[]
+  relacion: Relacion
+  servidores_en_comun: number
+}
+
+export const getPerfil = (usuarioId: number) => request<Perfil>(`/perfiles/${usuarioId}`)
+export const actualizarPerfil = (datos: { bio?: string; etiquetas?: string[]; redes?: RedSocial[] }) =>
+  request<Perfil>('/perfiles/me', { method: 'PATCH', body: datos })
+export const agregarFotoPerfil = (url: string) => request<Perfil>('/perfiles/me/fotos', { method: 'POST', body: { url } })
+export const elegirFotoPrincipal = (id: number) => request<Perfil>(`/perfiles/me/fotos/${id}/principal`, { method: 'POST' })
+export const borrarFotoPerfil = (id: number) => request<Perfil>(`/perfiles/me/fotos/${id}`, { method: 'DELETE' })
+
+export type HistorialServidor = {
+  id: number
+  servidor_id: number | null
+  servidor_nombre: string
+  fecha_union: string
+  fecha_salida: string | null
+  motivo_salida: 'salio' | 'expulsado' | 'baneado' | 'servidor_borrado' | 'servidor_vencido' | null
+  sigue_existiendo: boolean
+}
+export const getHistorialServidores = () => request<HistorialServidor[]>('/perfiles/me/historial-servidores')
+
+export const cambiarApodo = (servidorId: number, usuarioId: number, apodo: string | null) =>
+  request<Miembro>(`/servidores/${servidorId}/miembros/${usuarioId}/apodo`, { method: 'PUT', body: { apodo } })

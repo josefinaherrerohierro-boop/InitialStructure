@@ -11,6 +11,8 @@ import {
   getMe,
   getMiembros,
   getRoles,
+  getFeed,
+  getPublicacionesDePerfil,
   getServidoresDeUsuario,
   getToken,
   mensajeDeError,
@@ -25,11 +27,13 @@ import { ChannelList } from './channel-list'
 import { ConfiguracionServidor } from './config/configuracion-servidor'
 import { ChatPanel, DirectoPanel } from './chat-panel'
 import { EmptyState } from './empty-state'
+import { EstadosBarra } from './estados'
 import { AmigosView, InicioSidebar, usePendientesInicio, type SeleccionInicio } from './inicio'
 import { MembersPanel } from './members-panel'
 import { CrearCanalModal, CrearServidorModal, InvitarModal, UnirmeModal } from './modals'
 import { BusquedaPanel, FijadosPanel, MultimediaPanel } from './paneles-chat'
 import { PerfilModal } from './perfil-modal'
+import { PublicacionesLista } from './publicaciones'
 import { ServerSelector } from './server-selector'
 import { useToast } from './toast-provider'
 import { Avatar, Boton, Logo } from './ui'
@@ -322,8 +326,19 @@ function AppShellInterno() {
           <h1 className="font-semibold">Publicaciones y estados</h1>
         </div>
       )
-      contenido = (
-        <div className="flex flex-1 items-center justify-center p-8 text-sm text-muted-foreground">Próximamente.</div>
+      contenido = yo && (
+        <div className="scrollbar-thin flex-1 overflow-y-auto">
+          <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-6">
+            <EstadosBarra yo={yo} />
+            <PublicacionesLista
+              clave="feed"
+              cargar={getFeed}
+              yo={yo}
+              vacio="Todavía no hay publicaciones. ¡Escribí la primera o agregá amigos!"
+              onVerPerfil={setPerfilAbierto}
+            />
+          </div>
+        </div>
       )
     } else {
       encabezado = (
@@ -476,7 +491,27 @@ function AppShellInterno() {
           }}
         />
       )}
-      <PerfilModal usuarioId={perfilAbierto} onCerrar={() => setPerfilAbierto(null)} onMensaje={abrirDirecto} />
+      <PerfilModal
+        usuarioId={perfilAbierto}
+        onCerrar={() => setPerfilAbierto(null)}
+        onMensaje={abrirDirecto}
+        extra={(perfil) =>
+          yo && (
+            <div className="flex flex-col gap-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Publicaciones</p>
+              <div className="scrollbar-thin -mx-2 max-h-96 overflow-y-auto px-2">
+                <PublicacionesLista
+                  clave={`perfil-${perfil.id}`}
+                  cargar={(antesDe) => getPublicacionesDePerfil(perfil.id, antesDe)}
+                  yo={yo}
+                  permitirPublicar={false}
+                  vacio={perfil.relacion === 'yo' ? 'Todavía no publicaste nada.' : `${perfil.username} todavía no publicó nada.`}
+                />
+              </div>
+            </div>
+          )
+        }
+      />
     </div>
   )
 }

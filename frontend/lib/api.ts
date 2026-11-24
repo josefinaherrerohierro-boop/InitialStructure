@@ -459,3 +459,43 @@ export const getHistorialServidores = () => request<HistorialServidor[]>('/perfi
 
 export const cambiarApodo = (servidorId: number, usuarioId: number, apodo: string | null) =>
   request<Miembro>(`/servidores/${servidorId}/miembros/${usuarioId}/apodo`, { method: 'PUT', body: { apodo } })
+
+// ---------------------------------------------------------------------------
+// Publicaciones y estados
+// ---------------------------------------------------------------------------
+
+export type Publicacion = {
+  id: number
+  autor: UsuarioResumen
+  servidor_id: number | null
+  contenido: string
+  imagen_url: string | null
+  fecha: string
+  likes: number
+  me_gusta: boolean
+  comentarios: number
+}
+export type Comentario = { id: number; publicacion_id: number; autor: UsuarioResumen; contenido: string; fecha: string }
+export type Estado = { id: number; contenido: string; imagen_url: string | null; color_fondo: string; fecha: string; vence: string }
+export type EstadosDeUsuario = { usuario: UsuarioResumen; estados: Estado[] }
+
+const conAntesDe = (ruta: string, antesDe?: number) => (antesDe ? `${ruta}?antes_de=${antesDe}` : ruta)
+
+export const getFeed = (antesDe?: number) => request<Publicacion[]>(conAntesDe('/publicaciones/feed', antesDe))
+export const getPublicacionesDePerfil = (usuarioId: number, antesDe?: number) =>
+  request<Publicacion[]>(conAntesDe(`/perfiles/${usuarioId}/publicaciones`, antesDe))
+export const getPublicacionesDeServidor = (servidorId: number, antesDe?: number) =>
+  request<Publicacion[]>(conAntesDe(`/servidores/${servidorId}/publicaciones`, antesDe))
+export const crearPublicacion = (datos: { contenido: string; imagen_url: string | null; servidor_id?: number | null }) =>
+  request<Publicacion>('/publicaciones', { method: 'POST', body: datos })
+export const borrarPublicacion = (id: number) => request<void>(`/publicaciones/${id}`, { method: 'DELETE' })
+export const alternarMeGusta = (id: number) => request<Publicacion>(`/publicaciones/${id}/like`, { method: 'POST' })
+export const getComentarios = (id: number) => request<Comentario[]>(`/publicaciones/${id}/comentarios`)
+export const comentar = (id: number, contenido: string) =>
+  request<Comentario>(`/publicaciones/${id}/comentarios`, { method: 'POST', body: { contenido } })
+export const borrarComentario = (id: number) => request<void>(`/comentarios/${id}`, { method: 'DELETE' })
+
+export const getEstados = () => request<EstadosDeUsuario[]>('/estados')
+export const subirEstado = (datos: { contenido: string; imagen_url: string | null; color_fondo: string }) =>
+  request<Estado>('/estados', { method: 'POST', body: datos })
+export const borrarEstado = (id: number) => request<void>(`/estados/${id}`, { method: 'DELETE' })

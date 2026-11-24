@@ -1,63 +1,214 @@
 'use client'
 
+import { useEffect, useRef, useState } from 'react'
 import useSWR from 'swr'
-import { Headphones, Mic, MicOff, PhoneOff, Volume2 } from 'lucide-react'
-import { getParticipantesVoz, type Canal, type Usuario } from '@/lib/api'
+import {
+  Gamepad2,
+  Headphones,
+  Mic,
+  MicOff,
+  MonitorUp,
+  PenTool,
+  PhoneOff,
+  Users,
+  Video,
+  VideoOff,
+  Volume2,
+} from 'lucide-react'
+import { getParticipantesVoz, type Canal, type ParticipanteVoz, type Usuario } from '@/lib/api'
 import type { Voz } from '@/lib/use-voz'
 import { cn } from '@/lib/utils'
+import { JuegosLlamada } from './juegos-llamada'
+import { Pizarra } from './pizarra'
 import { Avatar, Boton, ErrorFormulario } from './ui'
 
-/** Pantalla de un canal de voz: entrar, ver quién habla, silenciarse y salir. */
+/** Un <video> que muestra un MediaStream (de la cámara o la pantalla). */
+function VideoStream({ stream, espejo, className }: { stream: MediaStream; espejo?: boolean; className?: string }) {
+  const ref = useRef<HTMLVideoElement>(null)
+  useEffect(() => {
+    if (ref.current && ref.current.srcObject !== stream) ref.current.srcObject = stream
+  }, [stream])
+  return (
+    <video
+      ref={ref}
+      autoPlay
+      playsInline
+      muted // el audio viaja aparte (ver use-voz)
+      className={cn('size-full bg-black object-cover', espejo && '-scale-x-100', className)}
+    />
+  )
+}
+
+type Tarjeta = {
+  clave: string
+  participante: ParticipanteVoz
+  esYo: boolean
+  tipo: 'camara' | 'pantalla' | 'avatar'
+  stream?: MediaStream
+}
+
+type Pestania = 'llamada' | 'pizarra' | 'juegos'
+
+/** Pantalla de un canal de voz: entrar, ver/escuchar, cámara, pantalla, pizarra y juegos. */
 export function VoicePanel({ canal, yo, voz }: { canal: Canal; yo: Usuario; voz: Voz }) {
+  const [pestania, setPestania] = useState<Pestania>('llamada')
+  const [destacado, setDestacado] = useState<string | null>(null)
   const enEsteCanal = voz.canal?.id === canal.id
   const conectado = enEsteCanal && voz.estado === 'conectado'
 
   // Mientras no estoy adentro, muestro quiénes están conectados (se actualiza cada 3 s).
-  const { data: presentes } = useSWR(
-    !conectado ? ['voz', canal.id] : null,
-    () => getParticipantesVoz(canal.id),
-    { refreshInterval: 3000, onError: () => {} },
-  )
+  const { data: presentes } = useSWR(!conectado ? ['voz', canal.id] : null, () => getParticipantesVoz(canal.id), {
+    refreshInterval: 3000,
+    onError: () => {},
+  })
 
   if (conectado) {
-    const todos = [{ usuario_id: yo.id, username: yo.username, silenciado: voz.silenciado }, ...voz.participantes]
+    const yoComoParticipante: ParticipanteVoz = {
+      usuario_id: yo.id,
+      username: yo.username,
+      silenciado: voz.silenciado,
+      camara: !!voz.camaraLocal,
+      pantalla: !!voz.pantallaLocal,
+    }
+    // Cada persona tiene una tarjeta (con cámara o con su avatar) y, si
+    // comparte pantalla, otra tarjeta más para la pantalla.
+    const tarjetas: Tarjeta[] = []
+    for (const p of [yoComoParticipante, ...voz.participantes]) {
+      const esYo = p.usuario_id === yo.id
+      const camara = esYo ? voz.camaraLocal : voz.videos[p.usuario_id]?.camara
+      const pantalla = esYo ? voz.pantallaLocal : voz.videos[p.usuario_id]?.pantalla
+      if (p.pantalla && pantalla) tarjetas.push({ clave: `${p.usuario_id}-pantalla`, participante: p, esYo, tipo: 'pantalla', stream: pantalla })
+      tarjetas.push(
+        p.camara && camara
+          ? { clave: `${p.usuario_id}-camara`, participante: p, esYo, tipo: 'camara', stream: camara }
+          : { clave: `${p.usuario_id}-avatar`, participante: p, esYo, tipo: 'avatar' },
+      )
+    }
+    const principal = tarjetas.find((t) => t.clave === destacado) ?? tarjetas.find((t) => t.tipo === 'pantalla')
+    const resto = principal ? tarjetas.filter((t) => t !== principal) : tarjetas
+
+    const renderTarjeta = (t: Tarjeta, grande = false) => {
+      const habla = !t.participante.silenciado && voz.hablando[t.participante.usuario_id]
+      return (
+        <button
+          key={t.clave}
+          type="button"
+          onClick={() => setDestacado(destacado === t.clave ? null : t.clave)}
+          className={cn(
+            'relative flex items-center justify-center overflow-hidden rounded-2xl border bg-surface transition-all',
+            grande ? 'aspect-video w-full max-w-5xl' : 'aspect-video w-full sm:w-64',
+            habla && t.tipo !== 'pantalla' ? 'border-success ring-2 ring-success/40' : 'border-border',
+          )}
+          aria-label={`${t.participante.username}${t.tipo === 'pantalla' ? ' (pantalla)' : ''}. Tocá para ${destacado === t.clave ? 'achicar' : 'agrandar'}`}
+        >
+          {t.stream ? (
+            <VideoStream
+              stream={t.stream}
+              espejo={t.esYo && t.tipo === 'camara'}
+              className={t.tipo === 'pantalla' ? 'object-contain' : undefined}
+            />
+          ) : (
+            <Avatar nombre={t.participante.username} tamanio={grande ? 'xl' : 'lg'} />
+          )}
+          <span className="absolute bottom-2 left-2 flex max-w-[90%] items-center gap-1.5 rounded-lg bg-black/60 px-2 py-1 text-xs text-white">
+            {t.tipo === 'pantalla' && <MonitorUp className="size-3" aria-hidden />}
+            <span className="truncate">
+              {t.participante.username}
+              {t.esYo && ' (vos)'}
+            </span>
+            {t.participante.silenciado && t.tipo !== 'pantalla' && <MicOff className="size-3 text-destructive" aria-label="Silenciado" />}
+          </span>
+        </button>
+      )
+    }
+
+    const botonControl = (activo: boolean, peligro = false) =>
+      cn(
+        'flex size-11 items-center justify-center rounded-full transition-colors',
+        peligro
+          ? 'bg-destructive text-white hover:bg-destructive/85'
+          : activo
+            ? 'bg-foreground text-background'
+            : 'bg-elevated text-foreground hover:bg-border',
+      )
+
     return (
       <div className="flex min-h-0 flex-1 flex-col">
-        <div className="scrollbar-thin flex flex-1 flex-wrap content-center items-center justify-center gap-4 overflow-y-auto p-6">
-          {todos.map((p) => {
-            const habla = !p.silenciado && voz.hablando[p.usuario_id]
-            return (
-              <div
-                key={p.usuario_id}
-                className={cn(
-                  'flex w-40 flex-col items-center gap-3 rounded-2xl border bg-surface p-5 transition-all',
-                  habla ? 'border-success ring-2 ring-success/40' : 'border-border',
-                )}
-              >
-                <Avatar nombre={p.username} tamanio="lg" />
-                <div className="flex max-w-full items-center gap-1.5 text-sm font-medium">
-                  <span className="truncate">{p.username}</span>
-                  {p.usuario_id === yo.id && <span className="font-normal text-muted-foreground">(vos)</span>}
-                  {p.silenciado && <MicOff className="size-3.5 shrink-0 text-destructive" aria-label="Silenciado" />}
-                </div>
-              </div>
-            )
-          })}
+        <div role="tablist" className="flex shrink-0 gap-1 border-b border-border px-4 py-2">
+          {(
+            [
+              ['llamada', 'Llamada', Users],
+              ['pizarra', 'Pizarra', PenTool],
+              ['juegos', 'Juegos', Gamepad2],
+            ] as const
+          ).map(([id, etiqueta, Icono]) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={pestania === id}
+              onClick={() => setPestania(id)}
+              className={cn(
+                'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors',
+                pestania === id ? 'bg-elevated font-medium text-foreground' : 'text-muted-foreground hover:bg-elevated/60',
+              )}
+            >
+              <Icono className="size-4" aria-hidden />
+              {etiqueta}
+              {id === 'juegos' && voz.juego && voz.juego.estado !== 'terminado' && (
+                <span className="size-2 rounded-full bg-primary" aria-label="Hay un juego en curso" />
+              )}
+            </button>
+          ))}
         </div>
 
+        {pestania === 'llamada' && (
+          <div className="scrollbar-thin flex min-h-0 flex-1 flex-col items-center gap-4 overflow-y-auto p-4">
+            {principal && renderTarjeta(principal, true)}
+            <div className={cn('flex w-full flex-wrap justify-center gap-3', !principal && 'flex-1 content-center')}>
+              {resto.map((t) => renderTarjeta(t))}
+            </div>
+          </div>
+        )}
+        {pestania === 'pizarra' && <Pizarra trazos={voz.trazos} onTrazo={voz.dibujar} onLimpiar={voz.limpiarPizarra} />}
+        {pestania === 'juegos' && <JuegosLlamada voz={voz} miId={yo.id} />}
+
         <div className="flex flex-col items-center gap-3 border-t border-border p-4">
-          {voz.participantes.length === 0 && (
+          {voz.participantes.length === 0 && pestania === 'llamada' && (
             <p className="text-sm text-muted-foreground">Por ahora estás solo. Cuando alguien entre, lo vas a escuchar.</p>
           )}
-          <div className="flex gap-2">
-            <Boton variante="secundario" onClick={voz.alternarSilencio}>
-              {voz.silenciado ? <MicOff className="size-4 text-destructive" aria-hidden /> : <Mic className="size-4" aria-hidden />}
-              {voz.silenciado ? 'Activar micrófono' : 'Silenciarme'}
-            </Boton>
-            <Boton variante="peligro" onClick={voz.salir}>
-              <PhoneOff className="size-4" aria-hidden />
-              Salir
-            </Boton>
+          <ErrorFormulario mensaje={voz.error} />
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={voz.alternarSilencio}
+              className={botonControl(voz.silenciado)}
+              aria-label={voz.silenciado ? 'Activar micrófono' : 'Silenciarme'}
+              title={voz.silenciado ? 'Activar micrófono' : 'Silenciarme'}
+            >
+              {voz.silenciado ? <MicOff className="size-5" /> : <Mic className="size-5" />}
+            </button>
+            <button
+              type="button"
+              onClick={voz.alternarCamara}
+              className={botonControl(!!voz.camaraLocal)}
+              aria-label={voz.camaraLocal ? 'Apagar cámara' : 'Prender cámara'}
+              title={voz.camaraLocal ? 'Apagar cámara' : 'Prender cámara'}
+            >
+              {voz.camaraLocal ? <Video className="size-5" /> : <VideoOff className="size-5" />}
+            </button>
+            <button
+              type="button"
+              onClick={voz.alternarPantalla}
+              className={botonControl(!!voz.pantallaLocal)}
+              aria-label={voz.pantallaLocal ? 'Dejar de compartir pantalla' : 'Compartir pantalla'}
+              title={voz.pantallaLocal ? 'Dejar de compartir pantalla' : 'Compartir pantalla'}
+            >
+              <MonitorUp className="size-5" />
+            </button>
+            <button type="button" onClick={voz.salir} className={botonControl(false, true)} aria-label="Salir de la llamada" title="Salir">
+              <PhoneOff className="size-5" />
+            </button>
           </div>
         </div>
       </div>
@@ -75,7 +226,7 @@ export function VoicePanel({ canal, yo, voz }: { canal: Canal; yo: Usuario; voz:
         </span>
         <div className="flex flex-col gap-1">
           <h2 className="text-lg font-semibold">{canal.nombre}</h2>
-          <p className="text-sm text-muted-foreground">Canal de voz</p>
+          <p className="text-sm text-muted-foreground">Canal de voz y video</p>
         </div>
 
         {presentes && presentes.length > 0 ? (
@@ -84,6 +235,8 @@ export function VoicePanel({ canal, yo, voz }: { canal: Canal; yo: Usuario; voz:
               <li key={p.usuario_id} className="flex items-center gap-1.5 rounded-lg bg-elevated px-2 py-1 text-xs">
                 <Avatar nombre={p.username} tamanio="sm" />
                 {p.username}
+                {p.camara && <Video className="size-3 text-success" aria-label="Con cámara" />}
+                {p.pantalla && <MonitorUp className="size-3 text-success" aria-label="Compartiendo pantalla" />}
                 {p.silenciado && <MicOff className="size-3 text-destructive" aria-label="Silenciado" />}
               </li>
             ))}
@@ -99,11 +252,11 @@ export function VoicePanel({ canal, yo, voz }: { canal: Canal; yo: Usuario; voz:
 
         <Boton cargando={conectando} onClick={() => voz.entrar({ id: canal.id, nombre: canal.nombre }, yo.id)}>
           <Mic className="size-4" aria-hidden />
-          Entrar al canal de voz
+          Entrar a la llamada
         </Boton>
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Headphones className="size-3.5" aria-hidden />
-          Usá auriculares para que no se acople el sonido.
+          Adentro podés prender la cámara, compartir pantalla, dibujar en la pizarra y jugar.
         </p>
       </div>
     </div>

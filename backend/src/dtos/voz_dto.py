@@ -7,3 +7,5 @@ class ParticipanteVozDTO(BaseModel):
     usuario_id: int
     username: str
     silenciado: bool
+    camara: bool = False
+    pantalla: bool = False

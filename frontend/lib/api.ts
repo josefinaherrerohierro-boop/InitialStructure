@@ -318,7 +318,13 @@ export const actualizarMiCuenta = (datos: { email?: string; username?: string; p
 export const borrarMiCuenta = () => request<void>('/usuarios/me', { method: 'DELETE' })
 
 // Chat de voz
-export type ParticipanteVoz = { usuario_id: number; username: string; silenciado: boolean }
+export type ParticipanteVoz = {
+  usuario_id: number
+  username: string
+  silenciado: boolean
+  camara?: boolean
+  pantalla?: boolean
+}
 
 export const getParticipantesVoz = (canalId: number) => request<ParticipanteVoz[]>(`/canales/${canalId}/voz`)
 

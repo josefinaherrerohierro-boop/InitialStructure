@@ -27,9 +27,11 @@ def participantes_de_voz(
 #
 # Mensajes que manda el navegador:
 #   {"tipo": "senal", "para": <usuario_id>, "datos": {...}}   oferta / respuesta / candidato ICE
-#   {"tipo": "estado", "silenciado": true|false}               micrófono silenciado o no
+#   {"tipo": "estado", "silenciado": bool, "camara": bool, "pantalla": bool}
+#   {"tipo": "pizarra", "accion": "trazo", "trazo": {...}} o {"accion": "limpiar"}
+#   {"tipo": "juego", "accion": "crear" | "unirse" | "jugar" | "cancelar", ...}
 # Mensajes que manda el servidor:
-#   bienvenida, entro, salio, senal, estado, error
+#   bienvenida, entro, salio, senal, estado, pizarra, juego, juego_error, error
 @router.websocket("/ws/voz/{canal_id}")
 async def canal_de_voz(websocket: WebSocket, canal_id: int, token: str = Query(default="")):
     await websocket.accept()
@@ -47,7 +49,8 @@ async def canal_de_voz(websocket: WebSocket, canal_id: int, token: str = Query(d
     try:
         servicio = VozService(db)
         usuario = servicio.autenticar(token)
-        servicio.validar_ingreso(canal_id, usuario.id)
+        canal = servicio.validar_ingreso(canal_id, usuario.id)
+        servidor_id = canal.servidor_id
         participante = Participante(usuario_id=usuario.id, username=usuario.username, websocket=websocket)
     except AppError as error:
         await websocket.send_json({"tipo": "error", "mensaje": error.message})
@@ -56,7 +59,7 @@ async def canal_de_voz(websocket: WebSocket, canal_id: int, token: str = Query(d
     finally:
         db.close()
 
-    await salas_de_voz.entrar(canal_id, participante)
+    await salas_de_voz.entrar(canal_id, servidor_id, participante)
     try:
         while True:
             mensaje = await websocket.receive_json()
@@ -68,7 +71,11 @@ async def canal_de_voz(websocket: WebSocket, canal_id: int, token: str = Query(d
                     continue
                 await salas_de_voz.reenviar_senal(canal_id, participante.usuario_id, para, mensaje.get("datos"))
             elif tipo == "estado":
-                await salas_de_voz.cambiar_silencio(canal_id, participante.usuario_id, bool(mensaje.get("silenciado")))
+                await salas_de_voz.cambiar_estado(canal_id, participante.usuario_id, mensaje)
+            elif tipo == "pizarra":
+                await salas_de_voz.pizarra(canal_id, participante.usuario_id, mensaje)
+            elif tipo == "juego":
+                await salas_de_voz.juego(canal_id, participante, mensaje)
     except WebSocketDisconnect:
         pass
     except Exception:

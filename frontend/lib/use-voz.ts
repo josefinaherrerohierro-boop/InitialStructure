@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * Hook del chat de voz (WebRTC en "malla": cada participante se conecta
+ * Hook de las llamadas (WebRTC en "malla": cada participante se conecta
  * directamente con cada uno de los demás).
  *
  * Pasos:
@@ -10,7 +10,14 @@
  * 3. El servidor nos manda "bienvenida" con quiénes ya están. A cada uno le
  *    mandamos una OFERTA (createOffer). Ellos responden con una RESPUESTA.
  * 4. Los dos lados intercambian "candidatos ICE" (posibles caminos de red).
- * 5. Cuando se conectan, el audio viaja DIRECTO entre navegadores.
+ * 5. Cuando se conectan, el audio y el video viajan DIRECTO entre navegadores.
+ *
+ * Video y pantalla compartida: cada conexión se crea desde el principio con
+ * dos "lugares" para video (uno para la cámara y otro para la pantalla).
+ * Prender la cámara es solo poner la imagen en su lugar (replaceTrack), así
+ * no hace falta volver a negociar la conexión.
+ *
+ * Por el mismo WebSocket viajan también la PIZARRA y los JUEGOS.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -22,10 +29,36 @@ const CONFIG_RTC: RTCConfiguration = { iceServers: [{ urls: 'stun:stun.l.google.
 const UMBRAL_HABLANDO = 0.02 // volumen a partir del cual consideramos que alguien habla
 
 export type EstadoVoz = 'desconectado' | 'conectando' | 'conectado'
+export type Trazo = { puntos: [number, number][]; color: string; grosor: number; borrador?: boolean }
+export type VideosDe = { camara?: MediaStream; pantalla?: MediaStream }
+
+export type JugadorJuego = { usuario_id: number; username: string }
+export type EstadoJuego = {
+  tipo: 'tateti' | 'ppt'
+  nombre: string
+  jugadores: JugadorJuego[]
+  estado: 'esperando' | 'jugando' | 'terminado'
+  ganador: number | null
+  empate: boolean
+  puntos_por_ganar: number
+  // ta-te-ti
+  tablero?: (number | null)[]
+  turno?: number | null
+  linea_ganadora?: number[] | null
+  // piedra, papel o tijera
+  ya_eligieron?: number[]
+  marcador?: Record<string, number>
+  ultima_ronda?: { elecciones: Record<string, string>; ganador: number | null } | null
+}
 
 type DatosSenal =
   | { tipo: 'offer' | 'answer'; sdp: RTCSessionDescriptionInit }
   | { tipo: 'ice'; candidate: RTCIceCandidateInit }
+
+/** Los dos lugares para video de una conexión: [cámara, pantalla]. */
+function lugaresDeVideo(pc: RTCPeerConnection): RTCRtpTransceiver[] {
+  return pc.getTransceivers().filter((t) => t.receiver.track?.kind === 'video')
+}
 
 export function useVoz() {
   const [canal, setCanal] = useState<{ id: number; nombre: string } | null>(null)
@@ -34,9 +67,17 @@ export function useVoz() {
   const [silenciado, setSilenciado] = useState(false)
   const [hablando, setHablando] = useState<Record<number, boolean>>({}) // incluye mi id
   const [error, setError] = useState<string | null>(null)
+  const [camaraLocal, setCamaraLocal] = useState<MediaStream | null>(null)
+  const [pantallaLocal, setPantallaLocal] = useState<MediaStream | null>(null)
+  const [videos, setVideos] = useState<Record<number, VideosDe>>({})
+  const [trazos, setTrazos] = useState<Trazo[]>([])
+  const [juego, setJuego] = useState<EstadoJuego | null>(null)
+  const [avisoJuego, setAvisoJuego] = useState<string | null>(null)
 
   const ws = useRef<WebSocket | null>(null)
   const microfono = useRef<MediaStream | null>(null)
+  const pistaCamara = useRef<MediaStreamTrack | null>(null)
+  const pistaPantalla = useRef<MediaStreamTrack | null>(null)
   const peers = useRef(new Map<number, RTCPeerConnection>())
   const audios = useRef(new Map<number, HTMLAudioElement>())
   const candidatosPendientes = useRef(new Map<number, RTCIceCandidateInit[]>())
@@ -71,7 +112,8 @@ export function useVoz() {
           nuevo[id] = Math.sqrt(suma / datos.length) > UMBRAL_HABLANDO
         })
         setHablando((prev) => {
-          const iguales = Object.keys(nuevo).length === Object.keys(prev).length &&
+          const iguales =
+            Object.keys(nuevo).length === Object.keys(prev).length &&
             Object.entries(nuevo).every(([k, v]) => prev[Number(k)] === v)
           return iguales ? prev : nuevo
         })
@@ -90,13 +132,21 @@ export function useVoz() {
     audios.current.delete(usuarioId)
     medidores.current.delete(usuarioId)
     candidatosPendientes.current.delete(usuarioId)
+    setVideos((prev) => {
+      const { [usuarioId]: _, ...resto } = prev
+      return resto
+    })
   }, [])
 
-  /** Libera todo: conexiones, micrófono y medidores. */
+  /** Libera todo: conexiones, micrófono, cámara, pantalla y medidores. */
   const limpiar = useCallback(() => {
     Array.from(peers.current.keys()).forEach(cerrarPeer)
     microfono.current?.getTracks().forEach((t) => t.stop())
     microfono.current = null
+    pistaCamara.current?.stop()
+    pistaCamara.current = null
+    pistaPantalla.current?.stop()
+    pistaPantalla.current = null
     medidores.current.clear()
     if (intervalo.current !== null) window.clearInterval(intervalo.current)
     intervalo.current = null
@@ -106,33 +156,61 @@ export function useVoz() {
     setParticipantes([])
     setHablando({})
     setSilenciado(false)
+    setCamaraLocal(null)
+    setPantallaLocal(null)
+    setVideos({})
+    setTrazos([])
+    setJuego(null)
+    setAvisoJuego(null)
     setEstado('desconectado')
     setCanal(null)
   }, [cerrarPeer])
 
+  /** Pone nuestra cámara y pantalla actuales en los lugares de video de una conexión. */
+  const ponerVideos = useCallback((pc: RTCPeerConnection) => {
+    const [lugarCamara, lugarPantalla] = lugaresDeVideo(pc)
+    lugarCamara?.sender.replaceTrack(pistaCamara.current).catch(() => {})
+    lugarPantalla?.sender.replaceTrack(pistaPantalla.current).catch(() => {})
+  }, [])
+
   // ---------- conexión con otro participante ----------
   const crearPeer = useCallback(
-    (usuarioId: number) => {
+    (usuarioId: number, iniciador: boolean) => {
       const pc = new RTCPeerConnection(CONFIG_RTC)
       // Mandamos nuestro micrófono a esta persona.
       microfono.current?.getTracks().forEach((pista) => pc.addTrack(pista, microfono.current!))
+      // Quien manda la oferta crea los dos lugares para video (cámara y pantalla).
+      // Quien responde los recibe con la oferta (ver manejarSenal).
+      if (iniciador) {
+        pc.addTransceiver('video', { direction: 'sendrecv' })
+        pc.addTransceiver('video', { direction: 'sendrecv' })
+        ponerVideos(pc)
+      }
       // Cada camino de red que descubre el navegador se lo pasamos al otro.
       pc.onicecandidate = (e) => {
         if (e.candidate) enviar({ tipo: 'senal', para: usuarioId, datos: { tipo: 'ice', candidate: e.candidate.toJSON() } })
       }
-      // Cuando llega su audio, lo reproducimos.
       pc.ontrack = (e) => {
-        const audio = new Audio()
-        audio.autoplay = true
-        audio.srcObject = e.streams[0]
-        audio.play().catch(() => {})
-        audios.current.set(usuarioId, audio)
-        medir(usuarioId, e.streams[0])
+        if (e.track.kind === 'audio') {
+          // Cuando llega su audio, lo reproducimos.
+          const stream = e.streams[0] ?? new MediaStream([e.track])
+          const audio = new Audio()
+          audio.autoplay = true
+          audio.srcObject = stream
+          audio.play().catch(() => {})
+          audios.current.set(usuarioId, audio)
+          medir(usuarioId, stream)
+        } else {
+          // Video: el primer lugar es la cámara y el segundo, la pantalla.
+          const tipo = lugaresDeVideo(pc).indexOf(e.transceiver) === 1 ? 'pantalla' : 'camara'
+          const stream = new MediaStream([e.track])
+          setVideos((prev) => ({ ...prev, [usuarioId]: { ...prev[usuarioId], [tipo]: stream } }))
+        }
       }
       peers.current.set(usuarioId, pc)
       return pc
     },
-    [enviar, medir],
+    [enviar, medir, ponerVideos],
   )
 
   const aplicarPendientes = useCallback(async (usuarioId: number, pc: RTCPeerConnection) => {
@@ -146,8 +224,11 @@ export function useVoz() {
     async (de: number, datos: DatosSenal) => {
       if (datos.tipo === 'offer') {
         // Alguien nuevo nos ofrece conectarse: le respondemos.
-        const pc = peers.current.get(de) ?? crearPeer(de)
+        const pc = peers.current.get(de) ?? crearPeer(de, false)
         await pc.setRemoteDescription(datos.sdp)
+        // Los lugares de video llegaron con la oferta: los usamos para mandar también.
+        for (const t of lugaresDeVideo(pc)) t.direction = 'sendrecv'
+        ponerVideos(pc)
         await aplicarPendientes(de, pc)
         await pc.setLocalDescription(await pc.createAnswer())
         enviar({ tipo: 'senal', para: de, datos: { tipo: 'answer', sdp: pc.localDescription } })
@@ -168,13 +249,13 @@ export function useVoz() {
         }
       }
     },
-    [aplicarPendientes, crearPeer, enviar],
+    [aplicarPendientes, crearPeer, enviar, ponerVideos],
   )
 
   /** Le mandamos una oferta a alguien que ya estaba en el canal. */
   const ofrecer = useCallback(
     async (usuarioId: number) => {
-      const pc = crearPeer(usuarioId)
+      const pc = crearPeer(usuarioId, true)
       await pc.setLocalDescription(await pc.createOffer())
       enviar({ tipo: 'senal', para: usuarioId, datos: { tipo: 'offer', sdp: pc.localDescription } })
     },
@@ -217,6 +298,8 @@ export function useVoz() {
         switch (msg.tipo) {
           case 'bienvenida':
             setParticipantes(msg.participantes)
+            setTrazos(msg.pizarra ?? [])
+            setJuego(msg.juego ?? null)
             setEstado('conectado')
             // 3. Le mandamos una oferta a cada uno de los que ya estaban.
             for (const p of msg.participantes as ParticipanteVoz[]) await ofrecer(p.usuario_id)
@@ -234,8 +317,23 @@ export function useVoz() {
             break
           case 'estado':
             setParticipantes((prev) =>
-              prev.map((p) => (p.usuario_id === msg.usuario_id ? { ...p, silenciado: msg.silenciado } : p)),
+              prev.map((p) =>
+                p.usuario_id === msg.usuario_id
+                  ? { ...p, silenciado: msg.silenciado, camara: msg.camara, pantalla: msg.pantalla }
+                  : p,
+              ),
             )
+            break
+          case 'pizarra':
+            if (msg.accion === 'trazo') setTrazos((prev) => [...prev, msg.trazo])
+            if (msg.accion === 'limpiar') setTrazos([])
+            break
+          case 'juego':
+            setJuego(msg.juego)
+            setAvisoJuego(msg.aviso ?? null)
+            break
+          case 'juego_error':
+            setAvisoJuego(msg.mensaje)
             break
           case 'error':
             setError(msg.mensaje)
@@ -264,10 +362,111 @@ export function useVoz() {
     })
   }, [enviar])
 
+  /** Pone (o saca) una pista de video en el lugar indicado de todas las conexiones. */
+  const repartirVideo = useCallback((lugar: 0 | 1, pista: MediaStreamTrack | null) => {
+    peers.current.forEach((pc) => {
+      lugaresDeVideo(pc)[lugar]?.sender.replaceTrack(pista).catch(() => {})
+    })
+  }, [])
+
+  const apagarCamara = useCallback(() => {
+    pistaCamara.current?.stop()
+    pistaCamara.current = null
+    repartirVideo(0, null)
+    setCamaraLocal(null)
+    enviar({ tipo: 'estado', camara: false })
+  }, [enviar, repartirVideo])
+
+  const alternarCamara = useCallback(async () => {
+    if (pistaCamara.current) {
+      apagarCamara()
+      return
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 } } })
+      const pista = stream.getVideoTracks()[0]
+      pistaCamara.current = pista
+      repartirVideo(0, pista)
+      setCamaraLocal(stream)
+      enviar({ tipo: 'estado', camara: true })
+    } catch {
+      setError('No pudimos usar tu cámara. Revisá que el navegador tenga permiso para usarla.')
+    }
+  }, [apagarCamara, enviar, repartirVideo])
+
+  const dejarDeCompartir = useCallback(() => {
+    pistaPantalla.current?.stop()
+    pistaPantalla.current = null
+    repartirVideo(1, null)
+    setPantallaLocal(null)
+    enviar({ tipo: 'estado', pantalla: false })
+  }, [enviar, repartirVideo])
+
+  const alternarPantalla = useCallback(async () => {
+    if (pistaPantalla.current) {
+      dejarDeCompartir()
+      return
+    }
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false })
+      const pista = stream.getVideoTracks()[0]
+      // Si se deja de compartir desde el botón del navegador, avisamos igual.
+      pista.onended = () => {
+        if (pistaPantalla.current === pista) dejarDeCompartir()
+      }
+      pistaPantalla.current = pista
+      repartirVideo(1, pista)
+      setPantallaLocal(stream)
+      enviar({ tipo: 'estado', pantalla: true })
+    } catch {
+      // Canceló el diálogo de elegir pantalla: no es un error.
+    }
+  }, [dejarDeCompartir, enviar, repartirVideo])
+
+  // ---------- pizarra ----------
+  const dibujar = useCallback(
+    (trazo: Trazo) => {
+      setTrazos((prev) => [...prev, trazo])
+      enviar({ tipo: 'pizarra', accion: 'trazo', trazo })
+    },
+    [enviar],
+  )
+  const limpiarPizarra = useCallback(() => enviar({ tipo: 'pizarra', accion: 'limpiar' }), [enviar])
+
+  // ---------- juegos ----------
+  const accionJuego = useCallback(
+    (datos: { accion: 'crear' | 'unirse' | 'jugar' | 'cancelar'; juego?: string; casilla?: number; eleccion?: string }) => {
+      setAvisoJuego(null)
+      enviar({ tipo: 'juego', ...datos })
+    },
+    [enviar],
+  )
+
   // Si se cierra la pantalla, cortamos la llamada.
   useEffect(() => () => salir(), [salir])
 
-  return { canal, estado, participantes, silenciado, hablando, error, entrar, salir, alternarSilencio }
+  return {
+    canal,
+    estado,
+    participantes,
+    silenciado,
+    hablando,
+    error,
+    camaraLocal,
+    pantallaLocal,
+    videos,
+    trazos,
+    juego,
+    avisoJuego,
+    entrar,
+    salir,
+    alternarSilencio,
+    alternarCamara,
+    alternarPantalla,
+    dibujar,
+    limpiarPizarra,
+    accionJuego,
+  }
 }
 
 export type Voz = ReturnType<typeof useVoz>

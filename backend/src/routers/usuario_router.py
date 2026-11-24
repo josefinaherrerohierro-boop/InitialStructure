@@ -6,6 +6,7 @@ from src.db.models.usuario_model import Usuario
 from src.dtos.servidor_dto import ServidorResponseDTO
 from src.dtos.usuario_dto import CreateUsuarioDTO, UpdateUsuarioDTO, UsuarioResponseDTO
 from src.middlewares.auth_middleware import get_current_user
+from src.schemas.servidor_schema import OrdenServidoresSchema
 from src.schemas.usuario_schema import CreateUsuarioSchema, UpdateUsuarioSchema
 from src.services.servidor_service import ServidorService
 from src.services.usuario_service import UsuarioService
@@ -38,6 +39,16 @@ def modificar_mi_cuenta(
     # El id sale del token: nadie puede modificar la cuenta de otra persona.
     dto = UpdateUsuarioDTO(**payload.model_dump())
     return UsuarioService(db).update(actual.id, dto)
+
+
+# Cambiar el orden en que veo mis servidores en la barra lateral.
+@router.put("/me/servidores/orden", response_model=list[ServidorResponseDTO])
+def ordenar_mis_servidores(
+    payload: OrdenServidoresSchema,
+    db: Session = Depends(get_db),
+    actual: Usuario = Depends(get_current_user),
+):
+    return ServidorService(db).reordenar(payload.servidor_ids, actual.id)
 
 
 @router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)

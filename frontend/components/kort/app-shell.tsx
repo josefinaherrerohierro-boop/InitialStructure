@@ -17,6 +17,7 @@ import {
   getServidoresDeUsuario,
   getToken,
   mensajeDeError,
+  ordenarServidores,
   type Servidor,
   type UsuarioResumen,
 } from '@/lib/api'
@@ -66,6 +67,7 @@ export function AppShell() {
 
 function AppShellInterno() {
   const router = useRouter()
+  const toast = useToast()
   const params = useSearchParams()
   const [listo, setListo] = useState(false)
   const [servidorElegido, setServidorElegido] = useState<number | undefined>(() => {
@@ -166,6 +168,17 @@ function AppShellInterno() {
   function agregarServidor(s: Servidor) {
     mutateServidores((cur) => (cur?.some((x) => x.id === s.id) ? cur : [...(cur ?? []), s]), { revalidate: true })
     seleccionarServidor(s.id)
+  }
+
+  /** Cambia el orden de la lista al instante y lo guarda en la API. */
+  async function reordenarServidores(ids: number[]) {
+    const porId = new Map((servidores ?? []).map((s) => [s.id, s]))
+    const nuevos = ids.map((id) => porId.get(id)).filter((s): s is Servidor => !!s)
+    try {
+      await mutateServidores(ordenarServidores(ids), { optimisticData: nuevos, rollbackOnError: true, revalidate: false })
+    } catch (err) {
+      toast.error(mensajeDeError(err))
+    }
   }
 
   /** Vuelve a pedir todo a la API después de un cambio en la configuración. */
@@ -275,6 +288,7 @@ function AppShellInterno() {
         miId={yo?.id}
         cargando={cargandoServidores || !yo}
         onSeleccionar={seleccionarServidor}
+        onReordenar={reordenarServidores}
       />
 
       <div className="grid grid-cols-2 gap-2">

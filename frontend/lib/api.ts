@@ -188,8 +188,12 @@ export const getServidoresDeUsuario = (usuarioId: number) =>
   request<Servidor[]>(`/usuarios/${usuarioId}/servidores`)
 
 // Servidores
-export const crearServidor = (nombre: string) =>
-  request<Servidor>('/servidores/', { method: 'POST', body: { nombre } })
+export const crearServidor = (nombre: string, duracionHoras: number | null = null) =>
+  request<Servidor>('/servidores/', { method: 'POST', body: { nombre, duracion_horas: duracionHoras } })
+
+/** Guarda el orden en que el usuario quiere ver sus servidores. */
+export const ordenarServidores = (servidorIds: number[]) =>
+  request<Servidor[]>('/usuarios/me/servidores/orden', { method: 'PUT', body: { servidor_ids: servidorIds } })
 
 export const getServidor = (id: number) => request<Servidor>(`/servidores/${id}`)
 
@@ -247,7 +251,10 @@ export type Crecimiento = {
 }
 
 // Servidor (solo el dueño)
-export const actualizarServidor = (id: number, datos: { nombre: string }) =>
+export const actualizarServidor = (
+  id: number,
+  datos: { nombre?: string; duracion_horas?: number; hacer_permanente?: boolean },
+) =>
   request<Servidor>(`/servidores/${id}`, { method: 'PATCH', body: datos })
 
 export const borrarServidor = (id: number) => request<void>(`/servidores/${id}`, { method: 'DELETE' })

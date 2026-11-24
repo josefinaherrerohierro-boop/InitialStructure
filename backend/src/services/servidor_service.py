@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from sqlalchemy.orm import Session
 
 from src.db.models.rol_model import ROL_EVERYONE
@@ -15,6 +17,7 @@ from src.repositories.rol_repository import RolRepository
 from src.repositories.servidor_repository import ServidorRepository
 from src.services.permisos_service import PermisosService
 from src.utils.errors import ForbiddenError, UnprocessableError
+from src.utils.fechas import ahora
 
 
 class ServidorService:
@@ -39,8 +42,9 @@ class ServidorService:
         Si algo falla, no se guarda nada (rollback).
         """
         nombre = self._limpiar_nombre(dto.nombre)
+        expira_en = ahora() + timedelta(hours=dto.duracion_horas) if dto.duracion_horas else None
         try:
-            servidor = self.servidores.create(nombre=nombre, duenio_id=usuario_id)
+            servidor = self.servidores.create(nombre=nombre, duenio_id=usuario_id, expira_en=expira_en)
             self.miembros.create(usuario_id=usuario_id, servidor_id=servidor.id)
             self.canales.create(servidor_id=servidor.id, nombre="general", tipo="texto")
             everyone = self.roles.create(
@@ -61,7 +65,34 @@ class ServidorService:
         # Cada uno ve solo su propia lista: es información privada.
         if usuario_id != actual_id:
             raise ForbiddenError("Solo podés ver tus propios servidores")
-        return [to_servidor_response(s) for s in self.servidores.list_by_miembro(usuario_id)]
+        return [to_servidor_response(s) for s in self.servidores.list_by_miembro(usuario_id, ahora())]
+
+    # ---------- Cambiar el orden de mis servidores ----------
+    def reordenar(self, servidor_ids: list[int], actual_id: int) -> list[ServidorResponseDTO]:
+        membresias = {m.servidor_id: m for m in self.miembros.list_de_usuario(actual_id)}
+        if len(set(servidor_ids)) != len(servidor_ids):
+            raise UnprocessableError("Hay servidores repetidos en el orden")
+        if any(sid not in membresias for sid in servidor_ids):
+            raise UnprocessableError("Solo podés ordenar servidores de los que sos miembro")
+        for posicion, servidor_id in enumerate(servidor_ids):
+            self.miembros.update(membresias[servidor_id], posicion=posicion)
+        # Los que no se mandaron quedan al final.
+        for servidor_id, miembro in membresias.items():
+            if servidor_id not in servidor_ids:
+                self.miembros.update(miembro, posicion=None)
+        self.db.commit()
+        return self.list_de_usuario(actual_id, actual_id)
+
+    # ---------- Servidores temporales: borrar los vencidos ----------
+    def borrar_vencidos(self) -> int:
+        """Lo llama una tarea de fondo cada minuto (ver app.py)."""
+        vencidos = self.servidores.list_vencidos(ahora())
+        for servidor in vencidos:
+            self.historial.cerrar_todos(servidor, "servidor_vencido")
+            self.servidores.delete(servidor)
+        if vencidos:
+            self.db.commit()
+        return len(vencidos)
 
     # ---------- Ver / modificar / borrar ----------
     def get(self, servidor_id: int, actual_id: int) -> ServidorResponseDTO:
@@ -73,8 +104,15 @@ class ServidorService:
         servidor = self.permisos.obtener_servidor(servidor_id)
         self.permisos.exigir_duenio(servidor, actual_id)
 
+        cambios = {}
         if dto.nombre is not None:
-            self.servidores.update(servidor, nombre=self._limpiar_nombre(dto.nombre))
+            cambios["nombre"] = self._limpiar_nombre(dto.nombre)
+        if dto.hacer_permanente:
+            cambios["expira_en"] = None
+        elif dto.duracion_horas is not None:
+            cambios["expira_en"] = ahora() + timedelta(hours=dto.duracion_horas)
+        if cambios:
+            self.servidores.update(servidor, **cambios)
             self.db.commit()
             self.db.refresh(servidor)
 

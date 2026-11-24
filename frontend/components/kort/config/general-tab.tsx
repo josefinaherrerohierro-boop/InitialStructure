@@ -14,6 +14,8 @@ import type { Permisos } from '@/lib/kort'
 import { useToast } from '../toast-provider'
 import { Boton, Campo, ErrorFormulario, Input } from '../ui'
 import { Confirmar, Seccion } from './confirmar'
+import { horaMensaje } from '@/lib/kort'
+import { DURACIONES } from '../modals'
 
 export function GeneralTab({
   servidor,
@@ -56,6 +58,16 @@ export function GeneralTab({
     }
   }
 
+  async function cambiarDuracion(datos: { duracion_horas?: number; hacer_permanente?: boolean }) {
+    try {
+      await actualizarServidor(servidor.id, datos)
+      toast.exito(datos.hacer_permanente ? 'Ahora el servidor es permanente.' : 'Actualizamos la duración del servidor.')
+      onActualizar()
+    } catch (err) {
+      toast.error(mensajeDeError(err))
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       {permisos.esDuenio && (
@@ -71,6 +83,33 @@ export function GeneralTab({
               </Boton>
             </div>
           </form>
+        </Seccion>
+      )}
+
+      {permisos.esDuenio && (
+        <Seccion
+          titulo="Duración del servidor"
+          descripcion={
+            servidor.expira_en
+              ? `Es un servidor temporal: se borra solo el ${horaMensaje(servidor.expira_en)}.`
+              : 'Es un servidor permanente. Si lo hacés temporal, se va a borrar solo cuando se cumpla el tiempo.'
+          }
+        >
+          <div className="flex flex-wrap gap-1.5">
+            {DURACIONES.map((d) =>
+              d.horas === null ? (
+                servidor.expira_en && (
+                  <Boton key="perm" variante="secundario" className="h-9" onClick={() => cambiarDuracion({ hacer_permanente: true })}>
+                    Hacerlo permanente
+                  </Boton>
+                )
+              ) : (
+                <Boton key={d.horas} variante="fantasma" className="h-9 border border-border" onClick={() => cambiarDuracion({ duracion_horas: d.horas! })}>
+                  {servidor.expira_en ? `Que dure ${d.etiqueta} más` : `Temporal: ${d.etiqueta}`}
+                </Boton>
+              ),
+            )}
+          </div>
         </Seccion>
       )}
 

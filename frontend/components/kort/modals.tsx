@@ -20,14 +20,25 @@ import { Boton, Campo, ErrorFormulario, Input } from './ui'
 
 type BaseProps = { abierto: boolean; onCerrar: () => void }
 
+export const DURACIONES: { horas: number | null; etiqueta: string }[] = [
+  { horas: null, etiqueta: 'Permanente' },
+  { horas: 1, etiqueta: '1 hora' },
+  { horas: 6, etiqueta: '6 horas' },
+  { horas: 24, etiqueta: '1 día' },
+  { horas: 24 * 7, etiqueta: '1 semana' },
+  { horas: 24 * 30, etiqueta: '30 días' },
+]
+
 export function CrearServidorModal({ abierto, onCerrar, onCreado }: BaseProps & { onCreado: (s: Servidor) => void }) {
   const [nombre, setNombre] = useState('')
+  const [duracion, setDuracion] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [cargando, setCargando] = useState(false)
   const toast = useToast()
 
   function cerrar() {
     setNombre('')
+    setDuracion(null)
     setError(null)
     onCerrar()
   }
@@ -37,7 +48,7 @@ export function CrearServidorModal({ abierto, onCerrar, onCreado }: BaseProps & 
     setError(null)
     setCargando(true)
     try {
-      const s = await crearServidor(nombre.trim())
+      const s = await crearServidor(nombre.trim(), duracion)
       toast.exito(`Listo, creaste "${s.nombre}".`)
       onCreado(s)
       cerrar()
@@ -65,6 +76,30 @@ export function CrearServidorModal({ abierto, onCerrar, onCreado }: BaseProps & 
             placeholder="Ej.: Club de ajedrez"
           />
         </Campo>
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1.5 text-sm font-medium">Duración</legend>
+          <div className="flex flex-wrap gap-1.5">
+            {DURACIONES.map((d) => (
+              <button
+                key={d.etiqueta}
+                type="button"
+                onClick={() => setDuracion(d.horas)}
+                aria-pressed={duracion === d.horas}
+                className={cn(
+                  'rounded-lg border px-3 py-1.5 text-sm transition-colors',
+                  duracion === d.horas ? 'border-primary/60 bg-primary/12 text-primary' : 'border-border hover:bg-elevated',
+                )}
+              >
+                {d.etiqueta}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {duracion
+              ? 'Servidor temporal: cuando se cumpla el tiempo se borra solo, con todos sus mensajes.'
+              : 'El servidor queda hasta que lo borres.'}
+          </p>
+        </fieldset>
         <ErrorFormulario mensaje={error} />
         <div className="flex justify-end gap-2">
           <Boton type="button" variante="fantasma" onClick={cerrar}>
@@ -235,7 +270,7 @@ export function CrearCanalModal({
               type="checkbox"
               checked={soloLectura}
               onChange={(e) => setSoloLectura(e.target.checked)}
-              className="mt-0.5 size-4 accent-[#FF6B5B]"
+              className="mt-0.5 size-4 accent-primary"
             />
             <span className="flex flex-col">
               <span className="text-sm font-medium">Solo lectura</span>

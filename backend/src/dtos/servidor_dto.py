@@ -5,10 +5,13 @@ from pydantic import BaseModel
 
 class CreateServidorDTO(BaseModel):
     nombre: str
+    duracion_horas: int | None = None
 
 
 class UpdateServidorDTO(BaseModel):
     nombre: str | None = None
+    duracion_horas: int | None = None
+    hacer_permanente: bool = False
 
 
 class ServidorResponseDTO(BaseModel):
@@ -16,6 +19,7 @@ class ServidorResponseDTO(BaseModel):
     nombre: str
     duenio_id: int
     fecha_creacion: datetime
+    expira_en: datetime | None = None  # None = permanente
 
     model_config = {"from_attributes": True}
 

@@ -1,8 +1,13 @@
+import asyncio
+import logging
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from src.config.env import settings
+from src.db.connection import SessionLocal
 from src.middlewares.error_middleware import app_error_handler
 from src.routers import (
     amistad_router,
@@ -22,10 +27,31 @@ from src.routers import (
     usuario_router,
     voz_router,
 )
+from src.services.limpieza_service import limpiar_vencidos
 from src.utils.archivos import CARPETA_UPLOADS
 from src.utils.errors import AppError
 
-app = FastAPI(title="Kort API")
+log = logging.getLogger("kort")
+
+
+async def _limpieza_periodica():
+    """Cada minuto borra los servidores temporales y los estados vencidos."""
+    while True:
+        try:
+            await asyncio.to_thread(limpiar_vencidos, SessionLocal)
+        except Exception:
+            log.exception("Falló la limpieza de servidores temporales y estados")
+        await asyncio.sleep(60)
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    tarea = asyncio.create_task(_limpieza_periodica())
+    yield
+    tarea.cancel()
+
+
+app = FastAPI(title="Kort API", lifespan=lifespan)
 
 # CORS: permite que el frontend (Next.js, otro puerto) llame a esta API
 # desde el navegador. Sin esto, el navegador bloquea las peticiones.

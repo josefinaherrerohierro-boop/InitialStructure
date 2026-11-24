@@ -1,3 +1,6 @@
+from datetime import datetime
+
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from src.db.models.miembro_model import Miembro
@@ -16,8 +19,8 @@ class ServidorRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def create(self, nombre: str, duenio_id: int) -> Servidor:
-        servidor = Servidor(nombre=nombre, duenio_id=duenio_id)
+    def create(self, nombre: str, duenio_id: int, expira_en: datetime | None = None) -> Servidor:
+        servidor = Servidor(nombre=nombre, duenio_id=duenio_id, expira_en=expira_en)
         self.db.add(servidor)
         self.db.flush()  # asigna el id sin confirmar todavía
         return servidor
@@ -25,13 +28,20 @@ class ServidorRepository:
     def find_by_id(self, servidor_id: int) -> Servidor | None:
         return self.db.query(Servidor).filter(Servidor.id == servidor_id).first()
 
-    def list_by_miembro(self, usuario_id: int) -> list[Servidor]:
-        """Servidores donde el usuario es miembro (sin contar los que lo banearon)."""
+    def list_vencidos(self, ahora: datetime) -> list[Servidor]:
+        """Servidores temporales cuya fecha de vencimiento ya pasó."""
+        return self.db.query(Servidor).filter(Servidor.expira_en.isnot(None), Servidor.expira_en <= ahora).all()
+
+    def list_by_miembro(self, usuario_id: int, ahora: datetime) -> list[Servidor]:
+        """Servidores donde el usuario es miembro (sin contar los que lo banearon
+        ni los temporales vencidos), en el orden que eligió el usuario. Los que
+        todavía no ordenó van al final, por fecha de unión."""
         return (
             self.db.query(Servidor)
             .join(Miembro, Miembro.servidor_id == Servidor.id)
             .filter(Miembro.usuario_id == usuario_id, Miembro.baneado.is_(False))
-            .order_by(Servidor.id)
+            .filter(or_(Servidor.expira_en.is_(None), Servidor.expira_en > ahora))
+            .order_by(Miembro.posicion.is_(None), Miembro.posicion, Miembro.fecha_union, Servidor.id)
             .all()
         )
 

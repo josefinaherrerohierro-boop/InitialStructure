@@ -5,6 +5,7 @@ from src.repositories.miembro_repository import MiembroRepository
 from src.repositories.rol_repository import RolRepository
 from src.repositories.servidor_repository import ServidorRepository
 from src.utils.errors import ForbiddenError, NotFoundError
+from src.utils.fechas import ahora
 
 
 class PermisosService:
@@ -54,7 +55,9 @@ class PermisosService:
     # ---------- Exigencias (lanzan error si no se cumple) ----------
     def obtener_servidor(self, servidor_id: int) -> Servidor:
         servidor = self.servidores.find_by_id(servidor_id)
-        if servidor is None:
+        # Un servidor temporal vencido es como si ya no existiera (la tarea
+        # de fondo lo borra en menos de un minuto).
+        if servidor is None or (servidor.expira_en is not None and servidor.expira_en <= ahora()):
             raise NotFoundError("Servidor no encontrado")
         return servidor
 

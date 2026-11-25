@@ -7,6 +7,7 @@ import {
   actualizarPerfil,
   agregarFotoPerfil,
   borrarFotoPerfil,
+  cambiarVisibilidadFoto,
   elegirFotoPrincipal,
   getPerfil,
   mensajeDeError,
@@ -14,6 +15,7 @@ import {
   urlArchivo,
   type Perfil,
   type RedSocial,
+  type VisibilidadFoto,
   type Usuario,
 } from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -40,7 +42,7 @@ function Fotos({ perfil, onCambio }: { perfil: Perfil; onCambio: (p: Perfil) => 
   return (
     <Seccion
       titulo="Fotos de perfil"
-      descripcion={`Podés tener hasta ${MAX_FOTOS}. La marcada con la estrella es tu foto principal: es la que ve todo el mundo en el chat. Las demás se ven en tu perfil.`}
+      descripcion={`Podés tener hasta ${MAX_FOTOS}. La de la estrella es tu foto principal y la ve todo el mundo. Para cada una de las otras elegí quién la ve en tu perfil ("Oculta" = solo se ve en los servidores donde la uses). En cada servidor podés usar una foto distinta (Configuración del servidor → General): por ejemplo, una seria para el trabajo y otra para jugar.`}
     >
       <input
         ref={input}
@@ -65,7 +67,8 @@ function Fotos({ perfil, onCambio }: { perfil: Perfil; onCambio: (p: Perfil) => 
       />
       <ul className="grid grid-cols-3 gap-3 sm:grid-cols-6">
         {perfil.fotos.map((f) => (
-          <li key={f.id} className="group relative aspect-square">
+          <li key={f.id} className="group relative flex flex-col gap-1.5">
+            <div className="relative aspect-square">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={urlArchivo(f.url)}
@@ -92,6 +95,21 @@ function Fotos({ perfil, onCambio }: { perfil: Perfil; onCambio: (p: Perfil) => 
                 <Trash2 className="size-3.5" />
               </button>
             </div>
+            </div>
+            {f.principal ? (
+              <p className="text-center text-[11px] text-muted-foreground">Principal · la ven todos</p>
+            ) : (
+              <select
+                aria-label="Quién ve esta foto"
+                value={f.visibilidad ?? 'todos'}
+                onChange={(e) => hacer(() => cambiarVisibilidadFoto(f.id, e.target.value as VisibilidadFoto))}
+                className="h-7 w-full rounded-lg border border-border bg-background px-1 text-[11px]"
+              >
+                <option value="todos">La ven todos</option>
+                <option value="amigos">Solo amigos</option>
+                <option value="oculta">Oculta</option>
+              </select>
+            )}
           </li>
         ))}
         {perfil.fotos.length < MAX_FOTOS && (

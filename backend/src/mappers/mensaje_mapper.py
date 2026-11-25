@@ -14,6 +14,7 @@ def to_mensaje_response(
     mensaje: Mensaje,
     autor: Usuario,
     apodo: str | None = None,
+    avatar_url: str | None = None,
     reacciones: list[ReaccionResumenDTO] | None = None,
     encuesta: EncuestaDTO | None = None,
 ) -> MensajeResponseDTO:
@@ -23,7 +24,7 @@ def to_mensaje_response(
         autor_id=mensaje.autor_id,
         autor_username=autor.username,
         autor_apodo=apodo,
-        autor_avatar_url=autor.avatar_url,
+        autor_avatar_url=avatar_url or autor.avatar_url,
         contenido=mensaje.contenido,
         fecha=mensaje.fecha,
         editado=mensaje.editado,

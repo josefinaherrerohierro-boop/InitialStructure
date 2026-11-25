@@ -5,6 +5,7 @@ from sqlalchemy.sql import func
 
 from src.db.connection import Base
 
+VISIBILIDADES_FOTO = ("todos", "amigos", "oculta")
 REDES_PERMITIDAS = ("instagram", "x", "tiktok", "youtube", "twitch", "github", "spotify", "linkedin", "web")
 
 
@@ -30,4 +31,5 @@ class FotoPerfil(Base):
     usuario_id = Column(Integer, ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False)
     url = Column(String(255), nullable=False)
     principal = Column(Boolean, nullable=False, default=False)
+    visibilidad = Column(String(10), nullable=False, default="todos")  # 'todos', 'amigos' u 'oculta'
     fecha = Column(DateTime, nullable=False, server_default=func.now())

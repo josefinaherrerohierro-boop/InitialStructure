@@ -439,7 +439,8 @@ export const editarMensajeDirecto = (id: number, contenido: string) =>
 export const borrarMensajeDirecto = (id: number) => request<void>(`/mensajes-directos/mensaje/${id}`, { method: 'DELETE' })
 
 export type RedSocial = { red: string; url: string }
-export type FotoPerfil = { id: number; url: string; principal: boolean }
+export type VisibilidadFoto = 'todos' | 'amigos' | 'oculta'
+export type FotoPerfil = { id: number; url: string; principal: boolean; visibilidad?: VisibilidadFoto | null }
 export type Relacion = 'yo' | 'amigos' | 'enviada' | 'recibida' | 'ninguna'
 export type Perfil = {
   id: number
@@ -632,3 +633,19 @@ export type Wrapped = {
 }
 
 export const getWrapped = (anio: number) => request<Wrapped>(`/perfiles/me/wrapped?anio=${anio}`)
+
+// ---------------------------------------------------------------------------
+// Fotos por servidor, visibilidad de fotos y orden personal de las pestañas
+// ---------------------------------------------------------------------------
+
+export const cambiarVisibilidadFoto = (id: number, visibilidad: VisibilidadFoto) =>
+  request<Perfil>(`/perfiles/me/fotos/${id}`, { method: 'PATCH', body: { visibilidad } })
+
+/** Lo que cada uno configura para sí mismo en un servidor. */
+export type MiMembresia = { apodo: string | null; foto_id: number | null; orden_secciones: string[] | null }
+
+export const getMiMembresia = (servidorId: number) => request<MiMembresia>(`/servidores/${servidorId}/mi-membresia`)
+export const elegirMiFoto = (servidorId: number, fotoId: number | null) =>
+  request<MiMembresia>(`/servidores/${servidorId}/mi-foto`, { method: 'PUT', body: { foto_id: fotoId } })
+export const ordenarMisSecciones = (servidorId: number, orden: string[]) =>
+  request<MiMembresia>(`/servidores/${servidorId}/mi-orden`, { method: 'PUT', body: { orden } })

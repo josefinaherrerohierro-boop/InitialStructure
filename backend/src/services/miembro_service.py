@@ -1,11 +1,15 @@
+import json
+import re
+
 from sqlalchemy.orm import Session
 
 from src.db.models.miembro_model import Miembro
 from src.db.models.servidor_model import Servidor
-from src.dtos.miembro_dto import MiembroResponseDTO
+from src.dtos.miembro_dto import MiembroResponseDTO, MiMembresiaDTO
 from src.mappers.miembro_mapper import to_miembro_response
 from src.repositories.historial_repository import HistorialRepository
 from src.repositories.miembro_repository import MiembroRepository
+from src.repositories.perfil_repository import PerfilRepository
 from src.repositories.rol_repository import RolRepository
 from src.repositories.usuario_repository import UsuarioRepository
 from src.services.permisos_service import PermisosService
@@ -27,12 +31,14 @@ class MiembroService:
         servidor = self.permisos.obtener_servidor(servidor_id)
         self.permisos.exigir_miembro(servidor.id, actual_id)
 
+        avatares = self.miembros.avatares(servidor.id)
         resultado = []
         for miembro, usuario in self.miembros.list_activos(servidor.id):
             roles = self.roles.roles_de_usuario(servidor.id, usuario.id)
-            resultado.append(
-                to_miembro_response(miembro, usuario, roles, es_duenio=servidor.duenio_id == usuario.id)
-            )
+            dto = to_miembro_response(miembro, usuario, roles, es_duenio=servidor.duenio_id == usuario.id)
+            # Si eligió una foto especial para este servidor, se muestra esa.
+            dto.avatar_url = avatares.get(usuario.id, dto.avatar_url)
+            resultado.append(dto)
         return resultado
 
     # ---------- HU9: expulsar (kick) ----------
@@ -73,6 +79,45 @@ class MiembroService:
         self.miembros.delete(miembro)
         self.historial.cerrar(actual_id, servidor.id, "salio")
         self.db.commit()
+
+    # ---------- Lo que cada uno configura para sí en el servidor ----------
+    def mi_membresia(self, servidor_id: int, actual_id: int) -> MiMembresiaDTO:
+        miembro = self._mi_fila(servidor_id, actual_id)
+        return self._membresia_dto(miembro)
+
+    def elegir_foto(self, servidor_id: int, foto_id: int | None, actual_id: int) -> MiMembresiaDTO:
+        """Qué foto de perfil uso en este servidor (None = la principal)."""
+        miembro = self._mi_fila(servidor_id, actual_id)
+        if foto_id is not None:
+            foto = PerfilRepository(self.db).find_foto(foto_id)
+            if foto is None or foto.usuario_id != actual_id:
+                raise NotFoundError("Esa foto no es tuya")
+        self.miembros.update(miembro, foto_id=foto_id)
+        self.db.commit()
+        return self._membresia_dto(miembro)
+
+    def ordenar_secciones(self, servidor_id: int, orden: list[str], actual_id: int) -> MiMembresiaDTO:
+        """Mi orden de las pestañas del servidor. Es personal: no cambia lo que ven los demás."""
+        miembro = self._mi_fila(servidor_id, actual_id)
+        limpio = list(dict.fromkeys(orden))  # sin repetidos
+        if any(not re.fullmatch(r"[a-z]{1,20}(:[0-9]{1,9})?", clave) for clave in limpio):
+            raise UnprocessableError("Orden inválido")
+        self.miembros.update(miembro, orden_secciones=json.dumps(limpio) if limpio else None)
+        self.db.commit()
+        return self._membresia_dto(miembro)
+
+    def _mi_fila(self, servidor_id: int, actual_id: int) -> Miembro:
+        servidor = self.permisos.obtener_servidor(servidor_id)
+        self.permisos.exigir_miembro(servidor.id, actual_id)
+        return self.miembros.find(actual_id, servidor.id)
+
+    @staticmethod
+    def _membresia_dto(miembro: Miembro) -> MiMembresiaDTO:
+        return MiMembresiaDTO(
+            apodo=miembro.apodo,
+            foto_id=miembro.foto_id,
+            orden_secciones=json.loads(miembro.orden_secciones) if miembro.orden_secciones else None,
+        )
 
     # ---------- Apodos ----------
     def cambiar_apodo(self, servidor_id: int, usuario_id: int, apodo: str | None, actual_id: int) -> MiembroResponseDTO:

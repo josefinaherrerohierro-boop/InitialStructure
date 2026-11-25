@@ -295,6 +295,7 @@ class ScoreboardService:
         totales = self.puntos.totales(servidor.id)
         mensajes = self.puntos.mensajes_desde(servidor.id, ahora() - timedelta(days=30))
         tareas = self.tareas.hechas_por_usuario(servidor.id)
+        avatares = self.miembros.avatares(servidor.id)
 
         filas = [
             (miembro, usuario, totales.get(usuario.id, 0), mensajes.get(usuario.id, 0), tareas.get(usuario.id, 0))
@@ -304,7 +305,9 @@ class ScoreboardService:
         return [
             PuntajeDTO(
                 posicion=i + 1,
-                usuario=to_usuario_resumen(usuario),
+                usuario=to_usuario_resumen(usuario).model_copy(
+                    update={"avatar_url": avatares.get(usuario.id, usuario.avatar_url)}
+                ),
                 apodo=miembro.apodo,
                 puntos=puntos,
                 mensajes_30_dias=msgs,

@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.sql import func
 
 from src.db.connection import Base
@@ -18,3 +18,5 @@ class Miembro(Base):
     baneado = Column(Boolean, nullable=False, default=False)
     apodo = Column(String(32), nullable=True)  # apodo dentro de este servidor
     posicion = Column(Integer, nullable=True)  # orden en la barra lateral del usuario
+    foto_id = Column(Integer, ForeignKey("fotos_perfil.id", ondelete="SET NULL"), nullable=True)  # foto en este servidor
+    orden_secciones = Column(Text, nullable=True)  # orden personal de las pestañas (JSON)

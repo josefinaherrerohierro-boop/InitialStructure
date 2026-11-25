@@ -59,6 +59,12 @@ class PerfilRepository:
             foto.principal = foto.id == foto_id
         self.db.flush()
 
+    def actualizar_foto(self, foto: FotoPerfil, **campos) -> FotoPerfil:
+        for nombre, valor in campos.items():
+            setattr(foto, nombre, valor)
+        self.db.flush()
+        return foto
+
     def borrar_foto(self, foto: FotoPerfil) -> None:
         self.db.delete(foto)
         self.db.flush()

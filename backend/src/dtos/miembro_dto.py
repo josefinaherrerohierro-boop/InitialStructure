@@ -10,6 +10,14 @@ class RolResumenDTO(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class MiMembresiaDTO(BaseModel):
+    """Lo que cada uno configura para sí mismo en un servidor."""
+
+    apodo: str | None
+    foto_id: int | None  # None = usa la foto principal
+    orden_secciones: list[str] | None  # None = orden por defecto
+
+
 class MiembroResponseDTO(BaseModel):
     usuario_id: int
     username: str

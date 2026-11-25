@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Crown, Hourglass, LogOut, Plus, Settings, Ticket } from 'lucide-react'
 import type { Servidor, Usuario } from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { Carril } from './carril'
 import { tiempoRestante } from './server-selector'
 import { Avatar } from './ui'
 
@@ -46,7 +47,7 @@ export function PestaniasServidores({
   }
 
   return (
-    <nav aria-label="Tus servidores" className="flex min-w-0 items-center gap-1.5 overflow-x-auto py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <Carril etiqueta="servidores" sobreFondo className="flex-1">
       {servidores.map((s, i) => {
         const activo = s.id === seleccionadoId
         return (
@@ -98,7 +99,7 @@ export function PestaniasServidores({
           </button>
         )
       })}
-    </nav>
+    </Carril>
   )
 }
 

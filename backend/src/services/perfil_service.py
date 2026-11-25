@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from src.db.models.perfil_model import REDES_PERMITIDAS
+from src.db.models.perfil_model import REDES_PERMITIDAS, VISIBILIDADES_FOTO
 from src.db.models.usuario_model import Usuario
 from src.dtos.perfil_dto import (
     FotoPerfilDTO,
@@ -42,7 +42,7 @@ class PerfilService:
             fecha_registro=usuario.fecha_registro,
             etiquetas=self.perfiles.etiquetas(usuario.id),
             redes=[RedSocialDTO.model_validate(r) for r in self.perfiles.redes(usuario.id)],
-            fotos=[FotoPerfilDTO.model_validate(f) for f in self.perfiles.fotos(usuario.id)],
+            fotos=self._fotos_visibles(usuario.id, actual_id),
             relacion=self.amistades.relacion(actual_id, usuario.id),
             servidores_en_comun=0 if usuario.id == actual_id else self.miembros.servidores_en_comun(actual_id, usuario.id),
         )
@@ -95,6 +95,8 @@ class PerfilService:
         usuario = self._buscar_o_404(actual_id)
         foto = self._buscar_foto_propia(foto_id, actual_id)
         self.perfiles.marcar_principal(usuario.id, foto.id)
+        # La principal se ve en todos lados, así que es visible para todos.
+        self.perfiles.actualizar_foto(foto, visibilidad="todos")
         usuario.avatar_url = foto.url
         self.db.commit()
         return self.perfil(usuario.id, actual_id)
@@ -112,6 +114,35 @@ class PerfilService:
             usuario.avatar_url = nueva.url if nueva else None
         self.db.commit()
         return self.perfil(usuario.id, actual_id)
+
+    def cambiar_visibilidad(self, foto_id: int, visibilidad: str, actual_id: int) -> PerfilDTO:
+        """Quién ve esta foto en tu perfil: 'todos', 'amigos' u 'oculta'."""
+        foto = self._buscar_foto_propia(foto_id, actual_id)
+        if visibilidad not in VISIBILIDADES_FOTO:
+            raise UnprocessableError("Visibilidad inválida")
+        if foto.principal and visibilidad != "todos":
+            raise UnprocessableError(
+                "La foto principal la ve todo el mundo. Elegí otra como principal para poder ocultar esta."
+            )
+        self.perfiles.actualizar_foto(foto, visibilidad=visibilidad)
+        self.db.commit()
+        return self.perfil(actual_id, actual_id)
+
+    def _fotos_visibles(self, duenio_id: int, actual_id: int) -> list[FotoPerfilDTO]:
+        fotos = self.perfiles.fotos(duenio_id)
+        if duenio_id == actual_id:
+            return [FotoPerfilDTO(id=f.id, url=f.url, principal=f.principal, visibilidad=f.visibilidad) for f in fotos]
+        es_amigo = self.amistades.son_amigos(duenio_id, actual_id)
+        # Las que usa en servidores que compartimos ya las veo en el chat.
+        compartidas = self.miembros.fotos_vistas_por(duenio_id, actual_id)
+        return [
+            FotoPerfilDTO(id=f.id, url=f.url, principal=f.principal)
+            for f in fotos
+            if f.principal
+            or f.visibilidad == "todos"
+            or (f.visibilidad == "amigos" and es_amigo)
+            or f.id in compartidas
+        ]
 
     # ---------- Historial de servidores en los que estuve ----------
     def historial_servidores(self, actual_id: int) -> list[HistorialServidorDTO]:

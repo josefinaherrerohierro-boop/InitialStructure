@@ -130,6 +130,7 @@ CREATE TABLE IF NOT EXISTS fotos_perfil (
     usuario_id  INTEGER      NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
     url         VARCHAR(255) NOT NULL,
     principal   BOOLEAN      NOT NULL DEFAULT FALSE,
+    visibilidad VARCHAR(10)  NOT NULL DEFAULT 'todos' CHECK (visibilidad IN ('todos', 'amigos', 'oculta')),
     fecha       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -269,3 +270,16 @@ WHERE NOT EXISTS (
 -- (si ya habías creado la tabla con la versión anterior de este archivo).
 ALTER TABLE preferencias ALTER COLUMN tema SET DEFAULT 'kort';
 ALTER TABLE preferencias ALTER COLUMN color_primario SET DEFAULT '#e2553d';
+
+
+-- Fotos por servidor y orden personal de las pestañas ------------------
+-- (para quien ya había corrido una versión anterior de este archivo)
+ALTER TABLE fotos_perfil ADD COLUMN IF NOT EXISTS visibilidad VARCHAR(10) NOT NULL DEFAULT 'todos'
+    CHECK (visibilidad IN ('todos', 'amigos', 'oculta'));
+ALTER TABLE miembros ADD COLUMN IF NOT EXISTS foto_id INTEGER;
+ALTER TABLE miembros ADD COLUMN IF NOT EXISTS orden_secciones TEXT;
+DO $$ BEGIN
+    ALTER TABLE miembros ADD CONSTRAINT fk_miembro_foto
+        FOREIGN KEY (foto_id) REFERENCES fotos_perfil(id) ON DELETE SET NULL;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;

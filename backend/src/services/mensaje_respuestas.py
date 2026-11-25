@@ -31,6 +31,7 @@ class ArmadorDeMensajes:
     ) -> list[MensajeResponseDTO]:
         ids = [m.id for m, _ in filas]
         apodos = self.miembros.apodos(servidor_id)
+        avatares = self.miembros.avatares(servidor_id)
         reacciones = self._reacciones_por_mensaje(ids)
         encuestas = self._encuestas_por_mensaje(ids, actual_id)
         return [
@@ -38,6 +39,7 @@ class ArmadorDeMensajes:
                 mensaje,
                 autor,
                 apodo=apodos.get(autor.id),
+                avatar_url=avatares.get(autor.id),
                 reacciones=reacciones.get(mensaje.id, []),
                 encuesta=encuestas.get(mensaje.id),
             )

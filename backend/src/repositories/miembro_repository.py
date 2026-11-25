@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session, aliased
 
 from src.db.models.miembro_model import Miembro
+from src.db.models.perfil_model import FotoPerfil
 from src.db.models.usuario_model import Usuario
 
 
@@ -42,6 +43,34 @@ class MiembroRepository:
             .all()
         )
         return {usuario_id: apodo for usuario_id, apodo in filas}
+
+    def avatares(self, servidor_id: int) -> dict[int, str]:
+        """{usuario_id: url} de quienes eligieron una foto especial para este servidor."""
+        filas = (
+            self.db.query(Miembro.usuario_id, FotoPerfil.url)
+            .join(FotoPerfil, FotoPerfil.id == Miembro.foto_id)
+            .filter(Miembro.servidor_id == servidor_id)
+            .all()
+        )
+        return {usuario_id: url for usuario_id, url in filas}
+
+    def fotos_vistas_por(self, duenio_id: int, otro_id: int) -> set[int]:
+        """Ids de las fotos que `duenio_id` usa en servidores que comparte con `otro_id`
+        (esas fotos el otro ya las ve en el chat, así que también en el perfil)."""
+        otro = aliased(Miembro)
+        filas = (
+            self.db.query(Miembro.foto_id)
+            .join(otro, otro.servidor_id == Miembro.servidor_id)
+            .filter(
+                Miembro.usuario_id == duenio_id,
+                otro.usuario_id == otro_id,
+                Miembro.foto_id.isnot(None),
+                Miembro.baneado.is_(False),
+                otro.baneado.is_(False),
+            )
+            .all()
+        )
+        return {f for (f,) in filas}
 
     def update(self, miembro: Miembro, **campos) -> Miembro:
         for nombre, valor in campos.items():

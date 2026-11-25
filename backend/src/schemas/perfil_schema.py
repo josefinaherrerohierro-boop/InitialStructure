@@ -15,5 +15,9 @@ class UpdatePerfilSchema(BaseModel):
     redes: list[RedSocialSchema] | None = Field(default=None, max_length=9)
 
 
+class VisibilidadFotoSchema(BaseModel):
+    visibilidad: str = Field(pattern=r"^(todos|amigos|oculta)$")
+
+
 class FotoPerfilSchema(BaseModel):
     url: str = Field(max_length=255)

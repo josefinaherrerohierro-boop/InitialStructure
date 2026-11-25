@@ -18,6 +18,17 @@ class UpdateMensajeDirectoSchema(BaseModel):
     contenido: str = Field(min_length=1, max_length=2000)
 
 
+class MiFotoSchema(BaseModel):
+    # null = volver a usar la foto principal en este servidor
+    foto_id: int | None = Field(default=None, gt=0)
+
+
+class MiOrdenSchema(BaseModel):
+    # Claves de las pestañas en el orden elegido, ej: ["canal:5", "resumen", "calendario"].
+    # Lista vacía = volver al orden por defecto.
+    orden: list[str] = Field(max_length=200)
+
+
 class ApodoSchema(BaseModel):
     # null o "" = sacar el apodo
     apodo: str | None = Field(default=None, max_length=32)

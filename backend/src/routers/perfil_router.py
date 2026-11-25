@@ -6,7 +6,7 @@ from src.db.models.usuario_model import Usuario
 from src.dtos.perfil_dto import HistorialServidorDTO, PerfilDTO, RedSocialDTO, UpdatePerfilDTO
 from src.dtos.wrapped_dto import WrappedDTO
 from src.middlewares.auth_middleware import get_current_user
-from src.schemas.perfil_schema import FotoPerfilSchema, UpdatePerfilSchema
+from src.schemas.perfil_schema import FotoPerfilSchema, UpdatePerfilSchema, VisibilidadFotoSchema
 from src.services.perfil_service import PerfilService
 from src.services.wrapped_service import WrappedService
 
@@ -36,6 +36,17 @@ def agregar_foto(payload: FotoPerfilSchema, db: Session = Depends(get_db), actua
 @router.post("/me/fotos/{foto_id}/principal", response_model=PerfilDTO)
 def elegir_foto_principal(foto_id: int, db: Session = Depends(get_db), actual: Usuario = Depends(get_current_user)):
     return PerfilService(db).elegir_principal(foto_id, actual.id)
+
+
+# Quién ve cada foto en mi perfil: todos, solo amigos u oculta.
+@router.patch("/me/fotos/{foto_id}", response_model=PerfilDTO)
+def cambiar_visibilidad_foto(
+    foto_id: int,
+    payload: VisibilidadFotoSchema,
+    db: Session = Depends(get_db),
+    actual: Usuario = Depends(get_current_user),
+):
+    return PerfilService(db).cambiar_visibilidad(foto_id, payload.visibilidad, actual.id)
 
 
 @router.delete("/me/fotos/{foto_id}", response_model=PerfilDTO)

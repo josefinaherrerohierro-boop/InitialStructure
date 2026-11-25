@@ -14,6 +14,7 @@ import type { Permisos } from '@/lib/kort'
 import { useToast } from '../toast-provider'
 import { Boton, Campo, ErrorFormulario, Input } from '../ui'
 import { Confirmar, Seccion } from './confirmar'
+import { MiFotoServidor } from './mi-foto-servidor'
 import { horaMensaje } from '@/lib/kort'
 import { DURACIONES } from '../modals'
 
@@ -112,6 +113,8 @@ export function GeneralTab({
           </div>
         </Seccion>
       )}
+
+      <MiFotoServidor servidorId={servidor.id} miId={miId} onCambio={onActualizar} />
 
       {/* HU10: salir del servidor */}
       <Seccion

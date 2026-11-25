@@ -14,6 +14,8 @@ class FotoPerfilDTO(BaseModel):
     id: int
     url: str
     principal: bool
+    # Solo se manda en tu propio perfil (a los demás no les importa).
+    visibilidad: str | None = None
 
     model_config = {"from_attributes": True}
 

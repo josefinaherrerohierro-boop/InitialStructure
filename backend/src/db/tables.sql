@@ -105,6 +105,11 @@ CREATE TABLE miembros (
     apodo        VARCHAR(32),
     -- Orden en que el usuario quiere ver sus servidores en la barra lateral.
     posicion     INTEGER,
+    -- Qué foto de perfil usa en este servidor (NULL = su foto principal).
+    -- La FK se agrega más abajo, después de crear fotos_perfil.
+    foto_id      INTEGER,
+    -- Orden personal de las pestañas del servidor (lista JSON). Solo lo ve él.
+    orden_secciones TEXT,
     PRIMARY KEY (usuario_id, servidor_id)
 );
 
@@ -258,8 +263,16 @@ CREATE TABLE IF NOT EXISTS fotos_perfil (
     usuario_id  INTEGER      NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
     url         VARCHAR(255) NOT NULL,
     principal   BOOLEAN      NOT NULL DEFAULT FALSE,
+    -- Quién la ve en el perfil: 'todos', 'amigos' u 'oculta' (solo en los
+    -- servidores donde la elegiste como foto).
+    visibilidad VARCHAR(10)  NOT NULL DEFAULT 'todos' CHECK (visibilidad IN ('todos', 'amigos', 'oculta')),
     fecha       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+DO $$ BEGIN
+    ALTER TABLE miembros ADD CONSTRAINT fk_miembro_foto
+        FOREIGN KEY (foto_id) REFERENCES fotos_perfil(id) ON DELETE SET NULL;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 
 -- 14. Historial de servidores en los que estuvo cada usuario.

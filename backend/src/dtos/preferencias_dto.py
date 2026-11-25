@@ -7,5 +7,6 @@ class PreferenciasDTO(BaseModel):
     fuente: str = "geist"
     tamanio_fuente: int = 16
     compacto: bool = False
+    disposicion: str = "horizontal"
 
     model_config = {"from_attributes": True}

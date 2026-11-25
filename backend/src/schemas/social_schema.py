@@ -23,10 +23,19 @@ class MiFotoSchema(BaseModel):
     foto_id: int | None = Field(default=None, gt=0)
 
 
+class CarpetaSchema(BaseModel):
+    id: str = Field(pattern=r"^[a-z0-9]{1,12}$")
+    nombre: str = Field(min_length=1, max_length=30)
+    # Claves de lo que hay adentro, en orden: ["canal:6", "calendario", ...]
+    items: list[str] = Field(default_factory=list, max_length=200)
+
+
 class MiOrdenSchema(BaseModel):
-    # Claves de las pestañas en el orden elegido, ej: ["canal:5", "resumen", "calendario"].
-    # Lista vacía = volver al orden por defecto.
+    # Claves de las pestañas en el orden elegido, ej: ["canal:5", "resumen", "carpeta:a1"].
+    # Lista vacía (y sin carpetas) = volver al orden por defecto.
     orden: list[str] = Field(max_length=200)
+    # Carpetas personales: agrupan canales, salas o herramientas. Solo las ve quien las creó.
+    carpetas: list[CarpetaSchema] = Field(default_factory=list, max_length=20)
 
 
 class ApodoSchema(BaseModel):

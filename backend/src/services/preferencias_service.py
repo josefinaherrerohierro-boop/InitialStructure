@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from src.db.models.preferencias_model import FUENTES, TEMAS
+from src.db.models.preferencias_model import DISPOSICIONES, FUENTES, TEMAS
 from src.dtos.preferencias_dto import PreferenciasDTO
 from src.repositories.preferencias_repository import PreferenciasRepository
 from src.utils.errors import UnprocessableError
@@ -26,6 +26,8 @@ class PreferenciasService:
             raise UnprocessableError("Tipografía inválida")
         if not 12 <= dto.tamanio_fuente <= 20:
             raise UnprocessableError("El tamaño de letra va de 12 a 20")
+        if dto.disposicion not in DISPOSICIONES:
+            raise UnprocessableError("Disposición inválida")
 
         fila = self.preferencias.guardar(
             usuario_id,
@@ -34,6 +36,7 @@ class PreferenciasService:
             fuente=dto.fuente,
             tamanio_fuente=dto.tamanio_fuente,
             compacto=dto.compacto,
+            disposicion=dto.disposicion,
         )
         self.db.commit()
         return PreferenciasDTO.model_validate(fila)

@@ -670,10 +670,17 @@ export const cambiarVisibilidadFoto = (id: number, visibilidad: VisibilidadFoto)
   request<Perfil>(`/perfiles/me/fotos/${id}`, { method: 'PATCH', body: { visibilidad } })
 
 /** Lo que cada uno configura para sí mismo en un servidor. */
-export type MiMembresia = { apodo: string | null; foto_id: number | null; orden_secciones: string[] | null }
+/** Carpeta personal de pestañas (solo la ve quien la creó). */
+export type Carpeta = { id: string; nombre: string; items: string[] }
+export type MiMembresia = {
+  apodo: string | null
+  foto_id: number | null
+  orden_secciones: string[] | null
+  carpetas: Carpeta[]
+}
 
 export const getMiMembresia = (servidorId: number) => request<MiMembresia>(`/servidores/${servidorId}/mi-membresia`)
 export const elegirMiFoto = (servidorId: number, fotoId: number | null) =>
   request<MiMembresia>(`/servidores/${servidorId}/mi-foto`, { method: 'PUT', body: { foto_id: fotoId } })
-export const ordenarMisSecciones = (servidorId: number, orden: string[]) =>
-  request<MiMembresia>(`/servidores/${servidorId}/mi-orden`, { method: 'PUT', body: { orden } })
+export const ordenarMisSecciones = (servidorId: number, orden: string[], carpetas: Carpeta[] = []) =>
+  request<MiMembresia>(`/servidores/${servidorId}/mi-orden`, { method: 'PUT', body: { orden, carpetas } })

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from src.db.connection import get_db
 from src.db.models.usuario_model import Usuario
-from src.dtos.miembro_dto import MiembroResponseDTO, MiMembresiaDTO
+from src.dtos.miembro_dto import CarpetaDTO, MiembroResponseDTO, MiMembresiaDTO
 from src.middlewares.auth_middleware import get_current_user
 from src.schemas.social_schema import ApodoSchema, MiFotoSchema, MiOrdenSchema
 from src.services.miembro_service import MiembroService
@@ -88,7 +88,7 @@ def elegir_mi_foto(
     return MiembroService(db).elegir_foto(servidor_id, payload.foto_id, actual.id)
 
 
-# Mi orden de las pestañas del servidor (canales, salas y herramientas).
+# Mi orden de las pestañas del servidor (canales, salas y herramientas) y mis carpetas.
 @router.put("/servidores/{servidor_id}/mi-orden", response_model=MiMembresiaDTO)
 def ordenar_mis_secciones(
     servidor_id: int,
@@ -96,4 +96,5 @@ def ordenar_mis_secciones(
     db: Session = Depends(get_db),
     actual: Usuario = Depends(get_current_user),
 ):
-    return MiembroService(db).ordenar_secciones(servidor_id, payload.orden, actual.id)
+    carpetas = [CarpetaDTO(**c.model_dump()) for c in payload.carpetas]
+    return MiembroService(db).ordenar_secciones(servidor_id, payload.orden, actual.id, carpetas)

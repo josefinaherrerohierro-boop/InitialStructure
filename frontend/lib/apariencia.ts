@@ -8,7 +8,7 @@
  * página (ver el script en app/layout.tsx), antes de pedirla a la API.
  */
 
-export type Tema = 'kort' | 'oscuro' | 'medianoche' | 'claro' | 'bosque' | 'atardecer'
+export type Tema = 'auto' | 'kort' | 'oscuro' | 'medianoche' | 'claro' | 'bosque' | 'atardecer'
 export type Fuente = 'geist' | 'inter' | 'nunito' | 'lora' | 'space-grotesk' | 'atkinson' | 'mono'
 
 export type Preferencias = {
@@ -17,6 +17,8 @@ export type Preferencias = {
   fuente: Fuente
   tamanio_fuente: number
   compacto: boolean
+  /** Pestañas del servidor: en fila arriba o en columna a la izquierda. */
+  disposicion: 'horizontal' | 'vertical'
 }
 
 export const PREFERENCIAS_POR_DEFECTO: Preferencias = {
@@ -25,6 +27,7 @@ export const PREFERENCIAS_POR_DEFECTO: Preferencias = {
   fuente: 'geist',
   tamanio_fuente: 16,
   compacto: false,
+  disposicion: 'horizontal',
 }
 
 export const CLAVE_APARIENCIA = 'kort_apariencia'
@@ -61,9 +64,31 @@ export function colorDeTextoSobre(hex: string): string {
   return luminancia > 0.35 ? '#15161c' : '#ffffff'
 }
 
+/** Temas claros: con el botón de sol/luna se pasa al oscuro, y al revés. */
+export const TEMAS_CLAROS: Tema[] = ['kort', 'claro']
+
+/** ¿El sistema (Windows, el celular) está en modo oscuro? */
+const sistemaOscuro = () => typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches
+
+/** El tema que se ve de verdad: "automático" sigue al sistema. */
+export function temaEfectivo(tema: Tema): Tema {
+  return tema === 'auto' ? (sistemaOscuro() ? 'oscuro' : 'kort') : tema
+}
+
+let ultimaAplicada: Preferencias | null = null
+let escuchandoSistema = false
+
 export function aplicarApariencia(p: Preferencias) {
   const html = document.documentElement
-  html.dataset.tema = p.tema
+  ultimaAplicada = p
+  // En "automático", si el sistema cambia de claro a oscuro, Kort cambia también.
+  if (!escuchandoSistema && typeof window !== 'undefined') {
+    escuchandoSistema = true
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+      if (ultimaAplicada?.tema === 'auto') aplicarApariencia(ultimaAplicada)
+    })
+  }
+  html.dataset.tema = temaEfectivo(p.tema)
   html.dataset.fuente = p.fuente
   html.dataset.compacto = p.compacto ? 'true' : 'false'
   const textoPrimario = colorDeTextoSobre(p.color_primario)
@@ -78,4 +103,4 @@ export function aplicarApariencia(p: Preferencias) {
 }
 
 /** Script que corre antes de pintar la página: aplica la última apariencia conocida. */
-export const SCRIPT_APARIENCIA_INICIAL = `(function(){try{var p=JSON.parse(localStorage.getItem('${CLAVE_APARIENCIA}')||'null');if(!p)return;var h=document.documentElement,c=/^#[0-9a-fA-F]{6}$/;h.dataset.tema=p.tema;h.dataset.fuente=p.fuente;h.dataset.compacto=p.compacto?'true':'false';if(c.test(p.color_primario)&&c.test(p.texto_primario)){h.style.setProperty('--primary',p.color_primario);h.style.setProperty('--primary-foreground',p.texto_primario)}var t=Number(p.tamanio_fuente);if(t>=12&&t<=20)h.style.fontSize=t+'px'}catch(e){}})()`
+export const SCRIPT_APARIENCIA_INICIAL = `(function(){try{var p=JSON.parse(localStorage.getItem('${CLAVE_APARIENCIA}')||'null');if(!p)return;var h=document.documentElement,c=/^#[0-9a-fA-F]{6}$/;h.dataset.tema=p.tema==='auto'?(matchMedia('(prefers-color-scheme: dark)').matches?'oscuro':'kort'):p.tema;h.dataset.fuente=p.fuente;h.dataset.compacto=p.compacto?'true':'false';if(c.test(p.color_primario)&&c.test(p.texto_primario)){h.style.setProperty('--primary',p.color_primario);h.style.setProperty('--primary-foreground',p.texto_primario)}var t=Number(p.tamanio_fuente);if(t>=12&&t<=20)h.style.fontSize=t+'px'}catch(e){}})()`

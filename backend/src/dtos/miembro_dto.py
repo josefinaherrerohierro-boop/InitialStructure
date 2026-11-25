@@ -10,12 +10,19 @@ class RolResumenDTO(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class CarpetaDTO(BaseModel):
+    id: str
+    nombre: str
+    items: list[str]
+
+
 class MiMembresiaDTO(BaseModel):
     """Lo que cada uno configura para sí mismo en un servidor."""
 
     apodo: str | None
     foto_id: int | None  # None = usa la foto principal
     orden_secciones: list[str] | None  # None = orden por defecto
+    carpetas: list[CarpetaDTO] = []  # carpetas personales
 
 
 class MiembroResponseDTO(BaseModel):

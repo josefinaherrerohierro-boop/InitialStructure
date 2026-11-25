@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from src.db.models.miembro_model import Miembro
 from src.db.models.servidor_model import Servidor
-from src.dtos.miembro_dto import MiembroResponseDTO, MiMembresiaDTO
+from src.dtos.miembro_dto import CarpetaDTO, MiembroResponseDTO, MiMembresiaDTO
 from src.mappers.miembro_mapper import to_miembro_response
 from src.repositories.historial_repository import HistorialRepository
 from src.repositories.miembro_repository import MiembroRepository
@@ -96,13 +96,38 @@ class MiembroService:
         self.db.commit()
         return self._membresia_dto(miembro)
 
-    def ordenar_secciones(self, servidor_id: int, orden: list[str], actual_id: int) -> MiMembresiaDTO:
-        """Mi orden de las pestañas del servidor. Es personal: no cambia lo que ven los demás."""
+    def ordenar_secciones(
+        self, servidor_id: int, orden: list[str], actual_id: int, carpetas: list[CarpetaDTO] | None = None
+    ) -> MiMembresiaDTO:
+        """Mi orden de las pestañas del servidor y mis carpetas. Es personal:
+        no cambia lo que ven los demás."""
         miembro = self._mi_fila(servidor_id, actual_id)
+        clave_valida = re.compile(r"[a-z]{1,20}(:[a-z0-9]{1,12})?")
         limpio = list(dict.fromkeys(orden))  # sin repetidos
-        if any(not re.fullmatch(r"[a-z]{1,20}(:[0-9]{1,9})?", clave) for clave in limpio):
+        if any(not clave_valida.fullmatch(c) for c in limpio):
             raise UnprocessableError("Orden inválido")
-        self.miembros.update(miembro, orden_secciones=json.dumps(limpio) if limpio else None)
+
+        carpetas_limpias: list[dict] = []
+        usados: set[str] = set()
+        for carpeta in carpetas or []:
+            nombre = " ".join(carpeta.nombre.split())
+            if not nombre:
+                raise UnprocessableError("Las carpetas necesitan un nombre")
+            items = []
+            for clave in dict.fromkeys(carpeta.items):
+                if not clave_valida.fullmatch(clave) or clave.startswith("carpeta:"):
+                    raise UnprocessableError("Una carpeta no puede tener otra carpeta adentro")
+                if clave in usados:
+                    raise UnprocessableError("Cada pestaña puede estar en una sola carpeta")
+                usados.add(clave)
+                items.append(clave)
+            carpetas_limpias.append({"id": carpeta.id, "nombre": nombre[:30], "items": items})
+        if len({c["id"] for c in carpetas_limpias}) != len(carpetas_limpias):
+            raise UnprocessableError("Hay carpetas repetidas")
+
+        vacio = not limpio and not carpetas_limpias
+        guardado = None if vacio else json.dumps({"orden": limpio, "carpetas": carpetas_limpias})
+        self.miembros.update(miembro, orden_secciones=guardado)
         self.db.commit()
         return self._membresia_dto(miembro)
 
@@ -113,10 +138,14 @@ class MiembroService:
 
     @staticmethod
     def _membresia_dto(miembro: Miembro) -> MiMembresiaDTO:
+        datos = json.loads(miembro.orden_secciones) if miembro.orden_secciones else None
+        if isinstance(datos, list):  # formato viejo: solo la lista del orden
+            datos = {"orden": datos, "carpetas": []}
         return MiMembresiaDTO(
             apodo=miembro.apodo,
             foto_id=miembro.foto_id,
-            orden_secciones=json.loads(miembro.orden_secciones) if miembro.orden_secciones else None,
+            orden_secciones=(datos["orden"] or None) if datos else None,
+            carpetas=[CarpetaDTO(**c) for c in datos["carpetas"]] if datos else [],
         )
 
     # ---------- Apodos ----------

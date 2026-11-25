@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import useSWR, { SWRConfig } from 'swr'
-import { AtSign, House, Images, Menu, Newspaper, Pin, Search, Users, X } from 'lucide-react'
+import { AtSign, House, Images, Menu, Moon, Newspaper, Pin, Search, Sun, Users, X } from 'lucide-react'
 import {
   ApiError,
   clearToken,
@@ -14,6 +14,7 @@ import {
   getFeed,
   getPublicacionesDePerfil,
   getPreferencias,
+  guardarPreferencias,
   getPublicacionesDeServidor,
   getServidoresDeUsuario,
   getToken,
@@ -22,7 +23,14 @@ import {
   type Servidor,
   type UsuarioResumen,
 } from '@/lib/api'
-import { aplicarApariencia, CLAVE_APARIENCIA, PREFERENCIAS_POR_DEFECTO } from '@/lib/apariencia'
+import {
+  aplicarApariencia,
+  CLAVE_APARIENCIA,
+  PREFERENCIAS_POR_DEFECTO,
+  TEMAS_CLAROS,
+  temaEfectivo,
+  type Preferencias,
+} from '@/lib/apariencia'
 import { calcularPermisos } from '@/lib/kort'
 import { useVoz } from '@/lib/use-voz'
 import { cn } from '@/lib/utils'
@@ -31,6 +39,7 @@ import { AccionesServidor, MenuUsuario, PestaniasServidores } from './barra-supe
 import { AparienciaTab } from './ajustes/apariencia-tab'
 import { CalendarioView } from './calendario'
 import { BarraServidor, type VistaServidor } from './barra-servidor'
+import { SeccionesServidor } from './secciones-servidor'
 import { ConfiguracionServidor } from './config/configuracion-servidor'
 import { ChatPanel, DirectoPanel } from './chat-panel'
 import { EmptyState } from './empty-state'
@@ -110,6 +119,20 @@ function AppShellInterno() {
     onSuccess: aplicarApariencia,
     revalidateOnFocus: false,
   })
+  const disposicion = preferencias?.disposicion ?? 'horizontal'
+
+  /** Cambia algo de la apariencia (modo claro/oscuro, disposición): se ve al instante y se guarda. */
+  async function cambiarPreferencias(cambios: Partial<Preferencias>) {
+    const nuevas = { ...PREFERENCIAS_POR_DEFECTO, ...preferencias, ...cambios }
+    aplicarApariencia(nuevas)
+    try {
+      await mutatePreferencias(guardarPreferencias(nuevas), { optimisticData: nuevas, rollbackOnError: true, revalidate: false })
+    } catch (err) {
+      toast.error(mensajeDeError(err))
+    }
+  }
+
+  const modoOscuro = !TEMAS_CLAROS.includes(temaEfectivo(preferencias?.tema ?? 'kort'))
   const {
     data: servidores,
     isLoading: cargandoServidores,
@@ -373,6 +396,8 @@ function AppShellInterno() {
         onCrearCanal={() => setModal('crearCanal')}
         onInvitar={() => setModal('invitar')}
         onConfigurar={() => setModal('configuracion')}
+        orientacion={disposicion}
+        onCambiarOrientacion={(o) => cambiarPreferencias({ disposicion: o })}
         acciones={
           <>
             {canal?.tipo === 'texto' && !herramienta && (
@@ -471,6 +496,15 @@ function AppShellInterno() {
           <AccionesServidor onCrear={() => setModal('crearServidor')} onUnirme={() => setModal('unirme')} />
         </div>
         <div className="flex-1 md:hidden" />
+        <button
+          type="button"
+          onClick={() => cambiarPreferencias({ tema: modoOscuro ? 'kort' : 'oscuro' })}
+          className="flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-surface text-foreground shadow-[var(--sombra)] transition-colors hover:border-primary hover:text-primary"
+          aria-label={modoOscuro ? 'Pasar a modo claro' : 'Pasar a modo oscuro'}
+          title={modoOscuro ? 'Modo claro' : 'Modo oscuro'}
+        >
+          {modoOscuro ? <Sun className="size-4" /> : <Moon className="size-4" />}
+        </button>
         <MenuUsuario usuario={yo} onAjustes={() => setModal('ajustes')} onSalir={salir} />
       </header>
 
@@ -518,6 +552,22 @@ function AppShellInterno() {
 
       {/* Paneles flotantes */}
       <div className="flex min-h-0 flex-1 gap-3 px-3 pb-3">
+        {/* Pestañas del servidor en columna (si el usuario lo eligió) */}
+        {!mostrarInicio && servidor && disposicion === 'vertical' && (
+          <aside className="panel hidden w-64 shrink-0 flex-col overflow-hidden md:flex" aria-label={`Secciones de ${servidor.nombre}`}>
+            <SeccionesServidor
+              servidorId={servidor.id}
+              canales={canales}
+              canalId={canal?.id}
+              vista={herramienta}
+              permisos={permisos}
+              orientacion="vertical"
+              onCanal={seleccionarCanal}
+              onVista={seleccionarHerramienta}
+              onCrearCanal={() => setModal('crearCanal')}
+            />
+          </aside>
+        )}
         {mostrarInicio && (
           <aside className="panel hidden w-72 shrink-0 flex-col overflow-hidden md:flex" aria-label="Inicio">
             {lateral}

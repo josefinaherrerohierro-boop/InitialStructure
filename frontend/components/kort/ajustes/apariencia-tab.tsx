@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Check, RotateCcw } from 'lucide-react'
+import { Check, Columns3, Monitor, Moon, RotateCcw, Rows3, Sun } from 'lucide-react'
 import { guardarPreferencias, mensajeDeError } from '@/lib/api'
 import {
   aplicarApariencia,
@@ -53,7 +53,58 @@ export function AparienciaTab({ inicial, onGuardado }: { inicial: Preferencias; 
         {estado === 'guardando' ? 'Guardando…' : estado === 'guardado' ? 'Guardado en tu cuenta ✓' : ''}
       </p>
 
-      <Seccion titulo="Tema">
+      <Seccion titulo="Modo" descripcion="Automático sigue al modo de tu compu o tu celular. También lo cambiás rápido con el botón de sol/luna de arriba.">
+        <div className="grid grid-cols-3 gap-2">
+          {(
+            [
+              ['kort', 'Claro', Sun],
+              ['oscuro', 'Oscuro', Moon],
+              ['auto', 'Automático', Monitor],
+            ] as const
+          ).map(([tema, nombre, Icono]) => (
+            <button
+              key={tema}
+              type="button"
+              onClick={() => cambiar({ tema })}
+              aria-pressed={prefs.tema === tema}
+              className={cn(
+                'flex flex-col items-center gap-1.5 rounded-xl border-2 py-3 text-sm transition-colors',
+                prefs.tema === tema ? 'border-primary bg-primary/8 font-semibold' : 'border-border hover:border-muted-foreground/50',
+              )}
+            >
+              <Icono className="size-5" aria-hidden />
+              {nombre}
+            </button>
+          ))}
+        </div>
+      </Seccion>
+
+      <Seccion titulo="Pestañas de los servidores" descripcion="Dónde ver los canales, salas y herramientas de cada servidor.">
+        <div className="grid grid-cols-2 gap-2">
+          {(
+            [
+              ['horizontal', 'En fila (arriba)', Rows3],
+              ['vertical', 'En columna (izquierda)', Columns3],
+            ] as const
+          ).map(([disposicion, nombre, Icono]) => (
+            <button
+              key={disposicion}
+              type="button"
+              onClick={() => cambiar({ disposicion })}
+              aria-pressed={prefs.disposicion === disposicion}
+              className={cn(
+                'flex items-center justify-center gap-2 rounded-xl border-2 py-3 text-sm transition-colors',
+                prefs.disposicion === disposicion ? 'border-primary bg-primary/8 font-semibold' : 'border-border hover:border-muted-foreground/50',
+              )}
+            >
+              <Icono className="size-5" aria-hidden />
+              {nombre}
+            </button>
+          ))}
+        </div>
+      </Seccion>
+
+      <Seccion titulo="Tema" descripcion="O elegí un tema con otros colores.">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {TEMAS.map((t) => (
             <button

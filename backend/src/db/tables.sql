@@ -394,5 +394,7 @@ CREATE TABLE IF NOT EXISTS preferencias (
     color_primario  VARCHAR(7)  NOT NULL DEFAULT '#e2553d',
     fuente          VARCHAR(20) NOT NULL DEFAULT 'geist',
     tamanio_fuente  INTEGER     NOT NULL DEFAULT 16 CHECK (tamanio_fuente BETWEEN 12 AND 20),
-    compacto        BOOLEAN     NOT NULL DEFAULT FALSE
+    compacto        BOOLEAN     NOT NULL DEFAULT FALSE,
+    -- Pestañas del servidor en fila ('horizontal') o en columna ('vertical').
+    disposicion     VARCHAR(10) NOT NULL DEFAULT 'horizontal' CHECK (disposicion IN ('horizontal', 'vertical'))
 );

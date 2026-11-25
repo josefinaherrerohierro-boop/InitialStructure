@@ -254,7 +254,9 @@ CREATE TABLE IF NOT EXISTS preferencias (
     color_primario  VARCHAR(7)  NOT NULL DEFAULT '#e2553d',
     fuente          VARCHAR(20) NOT NULL DEFAULT 'geist',
     tamanio_fuente  INTEGER     NOT NULL DEFAULT 16 CHECK (tamanio_fuente BETWEEN 12 AND 20),
-    compacto        BOOLEAN     NOT NULL DEFAULT FALSE
+    compacto        BOOLEAN     NOT NULL DEFAULT FALSE,
+    -- Pestañas del servidor en fila ('horizontal') o en columna ('vertical').
+    disposicion     VARCHAR(10) NOT NULL DEFAULT 'horizontal' CHECK (disposicion IN ('horizontal', 'vertical'))
 );
 
 
@@ -302,3 +304,8 @@ ALTER TABLE estados DROP CONSTRAINT IF EXISTS chk_estado_valido;
 ALTER TABLE estados ADD CONSTRAINT chk_estado_valido CHECK (
     char_length(btrim(contenido)) > 0 OR imagen_url IS NOT NULL OR invitacion_id IS NOT NULL
 );
+
+
+-- Pestañas del servidor en fila o en columna ---------------------------
+ALTER TABLE preferencias ADD COLUMN IF NOT EXISTS disposicion VARCHAR(10) NOT NULL DEFAULT 'horizontal'
+    CHECK (disposicion IN ('horizontal', 'vertical'));

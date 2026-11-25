@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import useSWR, { SWRConfig } from 'swr'
-import { AtSign, Hash, House, Images, Lock, Menu, Newspaper, Pin, Plus, Search, Ticket, Users, Volume2, X } from 'lucide-react'
+import { AtSign, Hash, House, Images, Lock, Menu, Newspaper, Pin, Search, Users, Volume2, X } from 'lucide-react'
 import {
   ApiError,
   clearToken,
@@ -27,6 +27,7 @@ import { calcularPermisos } from '@/lib/kort'
 import { useVoz } from '@/lib/use-voz'
 import { cn } from '@/lib/utils'
 import { AjustesUsuario } from './ajustes/ajustes-usuario'
+import { AccionesServidor, MenuUsuario, PestaniasServidores } from './barra-superior'
 import { AparienciaTab } from './ajustes/apariencia-tab'
 import { CalendarioView } from './calendario'
 import { ChannelList, HERRAMIENTAS, type Herramienta } from './channel-list'
@@ -44,8 +45,7 @@ import { ScoreboardView } from './scoreboard'
 import { TareasView } from './tareas'
 import { ServerSelector } from './server-selector'
 import { useToast } from './toast-provider'
-import { Avatar, Boton, Logo } from './ui'
-import { UserCard } from './user-card'
+import { Avatar, Logo } from './ui'
 import { VoicePanel, VozBar } from './voice-panel'
 import { WrappedHistoria, WrappedTab } from './wrapped'
 
@@ -83,7 +83,10 @@ function AppShellInterno() {
   const [canalPorServidor, setCanalPorServidor] = useState<Record<number, number>>({})
   // Si está elegida una herramienta (calendario, tareas...) se muestra en vez del canal.
   const [herramientaPorServidor, setHerramientaPorServidor] = useState<Record<number, Herramienta | null>>({})
-  const [panel, setPanel] = useState<PanelDerecho>('miembros')
+  // En pantallas chicas el panel derecho arranca cerrado (si no, tapa el chat).
+  const [panel, setPanel] = useState<PanelDerecho>(() =>
+    typeof window !== 'undefined' && window.innerWidth < 1024 ? null : 'miembros',
+  )
   const [menuAbierto, setMenuAbierto] = useState(false)
   const [modal, setModal] = useState<ModalAbierto>(null)
   const [perfilAbierto, setPerfilAbierto] = useState<number | null>(null)
@@ -263,62 +266,37 @@ function AppShellInterno() {
             ? <MultimediaPanel servidorId={servidor.id} onCerrar={() => setPanel(null)} />
             : null
 
-  const sidebar = (
-    <div className="flex h-full flex-col gap-4 p-3">
-      <div className="flex items-center justify-between px-2 pt-1">
-        <Logo className="text-2xl" />
-        <button
-          type="button"
-          onClick={() => setMenuAbierto(false)}
-          className="rounded-md p-1 text-muted-foreground hover:bg-elevated hover:text-foreground md:hidden"
-          aria-label="Cerrar menú"
+  /** Botón "Inicio" con el globito de pendientes (se usa arriba y en el menú del celular). */
+  const botonInicio = (
+    <button
+      type="button"
+      onClick={() => irAInicio()}
+      aria-current={mostrarInicio ? 'page' : undefined}
+      className={cn(
+        'flex h-9 shrink-0 items-center gap-2 rounded-full border px-3.5 text-sm transition-all',
+        mostrarInicio
+          ? 'border-primary bg-primary font-semibold text-primary-foreground shadow-[var(--sombra)]'
+          : 'border-border bg-surface text-foreground hover:border-primary/50',
+      )}
+    >
+      <House className="size-4" aria-hidden />
+      Inicio
+      {pendientesInicio > 0 && (
+        <span
+          className={cn(
+            'flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold',
+            mostrarInicio ? 'bg-primary-foreground text-primary' : 'bg-primary text-primary-foreground',
+          )}
         >
-          <X className="size-5" />
-        </button>
-      </div>
-
-      <button
-        type="button"
-        onClick={() => irAInicio()}
-        aria-current={mostrarInicio ? 'true' : undefined}
-        className={cn(
-          'flex items-center gap-3 rounded-lg px-2 py-1.5 text-sm transition-colors',
-          mostrarInicio ? 'bg-primary/12 font-medium text-foreground' : 'text-muted-foreground hover:bg-elevated hover:text-foreground',
-        )}
-      >
-        <span className="flex size-7 items-center justify-center rounded-lg bg-primary/15 text-primary">
-          <House className="size-4" aria-hidden />
+          {pendientesInicio > 99 ? '99+' : pendientesInicio}
         </span>
-        Inicio
-        {pendientesInicio > 0 && (
-          <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[11px] font-semibold text-white">
-            {pendientesInicio > 99 ? '99+' : pendientesInicio}
-          </span>
-        )}
-      </button>
+      )}
+    </button>
+  )
 
-      <ServerSelector
-        servidores={servidores}
-        seleccionadoId={servidor?.id}
-        miId={yo?.id}
-        cargando={cargandoServidores || !yo}
-        onSeleccionar={seleccionarServidor}
-        onReordenar={reordenarServidores}
-      />
-
-      <div className="grid grid-cols-2 gap-2">
-        <Boton variante="secundario" className="h-9 px-2 text-xs" onClick={() => setModal('crearServidor')}>
-          <Plus className="size-3.5" aria-hidden />
-          Crear servidor
-        </Boton>
-        <Boton variante="secundario" className="h-9 px-2 text-xs" onClick={() => setModal('unirme')}>
-          <Ticket className="size-3.5" aria-hidden />
-          Unirme con código
-        </Boton>
-      </div>
-
-      <div className="h-px bg-border" aria-hidden />
-
+  /** Contenido del panel de la izquierda: Inicio o los canales del servidor. */
+  const lateral = (
+    <div className="flex h-full min-h-0 flex-col gap-4 p-3">
       {mostrarInicio ? (
         <InicioSidebar
           onWrapped={() => setWrappedAbierto(true)}
@@ -345,9 +323,7 @@ function AppShellInterno() {
       ) : (
         <div className="flex-1" />
       )}
-
       <VozBar voz={voz} />
-      <UserCard usuario={yo} onSalir={salir} onCuenta={() => setModal('ajustes')} />
     </div>
   )
 
@@ -362,7 +338,7 @@ function AppShellInterno() {
         <button type="button" onClick={() => setPerfilAbierto(u.id)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
           <AtSign className="size-4 shrink-0 text-muted-foreground" aria-hidden />
           <Avatar nombre={u.username} url={u.avatar_url} tamanio="sm" />
-          <h1 className="truncate font-semibold hover:underline">{u.username}</h1>
+          <h1 className="truncate font-display text-[17px] font-bold hover:underline">{u.username}</h1>
         </button>
       )
       contenido = yo && <DirectoPanel key={u.id} usuario={u} yo={yo} onVerPerfil={setPerfilAbierto} />
@@ -370,7 +346,7 @@ function AppShellInterno() {
       encabezado = (
         <div className="flex flex-1 items-center gap-2">
           <Newspaper className="size-4 text-muted-foreground" aria-hidden />
-          <h1 className="font-semibold">Publicaciones y estados</h1>
+          <h1 className="font-display text-[17px] font-bold">Publicaciones y estados</h1>
         </div>
       )
       contenido = yo && (
@@ -391,7 +367,7 @@ function AppShellInterno() {
       encabezado = (
         <div className="flex flex-1 items-center gap-2">
           <Users className="size-4 text-muted-foreground" aria-hidden />
-          <h1 className="font-semibold">Amigos</h1>
+          <h1 className="font-display text-[17px] font-bold">Amigos</h1>
         </div>
       )
       contenido = <AmigosView onMensaje={abrirDirecto} onVerPerfil={setPerfilAbierto} />
@@ -411,7 +387,7 @@ function AppShellInterno() {
             ) : (
               <Hash className="size-4 shrink-0 text-muted-foreground" aria-hidden />
             )}
-            <h1 className="truncate font-semibold">{canal.nombre}</h1>
+            <h1 className="truncate font-display text-[17px] font-bold">{canal.nombre}</h1>
             {canal.solo_lectura && (
               <span className="flex shrink-0 items-center gap-1 rounded-md bg-elevated px-1.5 py-0.5 text-[11px] text-muted-foreground">
                 <Lock className="size-3" aria-hidden />
@@ -421,7 +397,7 @@ function AppShellInterno() {
             <span className="hidden truncate text-sm text-muted-foreground sm:inline">· {servidor?.nombre}</span>
           </div>
         ) : (
-          <h1 className="flex-1 truncate font-semibold">{servidor?.nombre ?? 'Kort'}</h1>
+          <h1 className="flex-1 truncate font-display text-[17px] font-bold">{servidor?.nombre ?? 'Kort'}</h1>
         )}
         {servidor && (
           <div className="flex shrink-0 items-center gap-0.5">
@@ -491,49 +467,89 @@ function AppShellInterno() {
   }
 
   return (
-    <div className="flex h-dvh overflow-hidden">
-      <aside className="hidden w-72 shrink-0 border-r border-border bg-surface md:block" aria-label="Navegación">
-        {sidebar}
-      </aside>
+    <div className="flex h-dvh flex-col overflow-hidden bg-background">
+      {/* Barra superior: logo, Inicio, pestañas de servidores y mi cuenta */}
+      <header className="flex h-16 shrink-0 items-center gap-3 px-3 sm:px-4">
+        <button
+          type="button"
+          onClick={() => setMenuAbierto(true)}
+          className="rounded-full p-2 text-muted-foreground hover:bg-surface hover:text-foreground md:hidden"
+          aria-label="Abrir menú"
+        >
+          <Menu className="size-5" />
+        </button>
+        <Logo className="shrink-0 text-xl" />
+        <div className="hidden h-6 w-px shrink-0 bg-border md:block" aria-hidden />
+        <div className="hidden min-w-0 flex-1 items-center gap-1.5 md:flex">
+          {botonInicio}
+          <PestaniasServidores
+            servidores={servidores}
+            seleccionadoId={servidor?.id}
+            miId={yo?.id}
+            onSeleccionar={seleccionarServidor}
+            onReordenar={reordenarServidores}
+          />
+          <AccionesServidor onCrear={() => setModal('crearServidor')} onUnirme={() => setModal('unirme')} />
+        </div>
+        <div className="flex-1 md:hidden" />
+        <MenuUsuario usuario={yo} onAjustes={() => setModal('ajustes')} onSalir={salir} />
+      </header>
 
+      {/* Menú del celular: Inicio, servidores y el panel lateral */}
       {menuAbierto && (
         <div className="fixed inset-0 z-40 md:hidden">
           <button
             type="button"
-            className="absolute inset-0 bg-black/60"
+            className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
             aria-label="Cerrar menú"
             onClick={() => setMenuAbierto(false)}
           />
-          <aside className="relative h-full w-80 max-w-[85vw] border-r border-border bg-surface" aria-label="Navegación">
-            {sidebar}
+          <aside className="panel absolute inset-y-3 left-3 flex w-80 max-w-[85vw] flex-col overflow-hidden" aria-label="Navegación">
+            <div className="flex items-center justify-between gap-2 border-b border-border p-3">
+              {botonInicio}
+              <AccionesServidor onCrear={() => setModal('crearServidor')} onUnirme={() => setModal('unirme')} />
+              <button
+                type="button"
+                onClick={() => setMenuAbierto(false)}
+                className="rounded-full p-1.5 text-muted-foreground hover:bg-elevated"
+                aria-label="Cerrar menú"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+            <div className="border-b border-border p-3">
+              <ServerSelector
+                servidores={servidores}
+                seleccionadoId={servidor?.id}
+                miId={yo?.id}
+                cargando={cargandoServidores || !yo}
+                onSeleccionar={seleccionarServidor}
+                onReordenar={reordenarServidores}
+              />
+            </div>
+            <div className="min-h-0 flex-1">{lateral}</div>
           </aside>
         </div>
       )}
 
-      <main className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border px-4">
-          <button
-            type="button"
-            onClick={() => setMenuAbierto(true)}
-            className="-ml-1 rounded-md p-1.5 text-muted-foreground hover:bg-elevated hover:text-foreground md:hidden"
-            aria-label="Abrir menú"
-          >
-            <Menu className="size-5" />
-          </button>
-          {encabezado}
-        </header>
+      {/* Paneles flotantes */}
+      <div className="flex min-h-0 flex-1 gap-3 px-3 pb-3">
+        <aside className="panel hidden w-72 shrink-0 flex-col overflow-hidden md:flex" aria-label="Navegación">
+          {lateral}
+        </aside>
 
-        <div className="flex min-h-0 flex-1">
-          <div className="flex min-w-0 flex-1 flex-col">{contenido}</div>
+        <main className="panel flex min-w-0 flex-1 flex-col overflow-hidden">
+          <div className="flex h-14 shrink-0 items-center gap-3 border-b border-border px-4">{encabezado}</div>
+          <div className="flex min-h-0 flex-1 flex-col">{contenido}</div>
+        </main>
 
-          {!mostrarInicio && servidor && panelContenido && (
-            <>
-              <div className="hidden lg:block">{panelContenido}</div>
-              <div className="fixed inset-y-0 right-0 z-30 shadow-2xl shadow-black/50 lg:hidden">{panelContenido}</div>
-            </>
-          )}
-        </div>
-      </main>
+        {!mostrarInicio && servidor && panelContenido && (
+          <>
+            <div className="panel hidden shrink-0 overflow-hidden lg:block">{panelContenido}</div>
+            <div className="panel fixed inset-y-3 right-3 z-30 overflow-hidden lg:hidden">{panelContenido}</div>
+          </>
+        )}
+      </div>
 
       <CrearServidorModal abierto={modal === 'crearServidor'} onCerrar={() => setModal(null)} onCreado={agregarServidor} />
       <UnirmeModal abierto={modal === 'unirme'} onCerrar={() => setModal(null)} onUnido={agregarServidor} />
@@ -588,7 +604,7 @@ function AppShellInterno() {
         extra={(perfil) =>
           yo && (
             <div className="flex flex-col gap-2">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Publicaciones</p>
+              <p className="text-xs font-semibold text-muted-foreground">Publicaciones</p>
               <div className="scrollbar-thin -mx-2 max-h-96 overflow-y-auto px-2">
                 <PublicacionesLista
                   clave={`perfil-${perfil.id}`}
@@ -611,7 +627,7 @@ function IconoHerramienta({ herramienta }: { herramienta: Herramienta }) {
   return (
     <>
       <h.Icono className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-      <h1 className="truncate font-semibold">{h.nombre}</h1>
+      <h1 className="truncate font-display text-[17px] font-bold">{h.nombre}</h1>
     </>
   )
 }

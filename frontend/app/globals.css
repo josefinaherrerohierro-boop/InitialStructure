@@ -7,6 +7,7 @@
 @theme inline {
   --font-sans: var(--fuente-app), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-display: var(--font-bricolage), var(--fuente-app), ui-sans-serif, sans-serif;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -39,36 +40,68 @@
   --radius-2xl: calc(var(--radius) * 1.8);
 }
 
+/*
+ * Identidad visual de Kort: papel cálido, tinta y terracota.
+ * El tema por defecto ('kort') es claro; 'oscuro' es su versión de noche.
+ */
 :root {
-  color-scheme: dark;
-  --radius: 0.625rem;
-  --background: #15161c;
-  --surface: #1d1f27;
-  --elevated: #252833;
-  --border: #2e3240;
-  --foreground: #ecedef;
-  --muted-foreground: #9a9fad;
-  --primary: #ff6b5b;
+  color-scheme: light;
+  --radius: 0.75rem;
+  --background: #efe8dc; /* el "papel" que se ve entre los paneles */
+  --surface: #fbf8f2; /* los paneles */
+  --elevated: #f2ebe0;
+  --border: #e3d9ca;
+  --foreground: #231c15;
+  --muted-foreground: #7b6e60;
+  --primary: #e2553d;
   /* El color principal lo puede cambiar cada usuario (ver lib/apariencia.ts). */
-  --primary-hover: color-mix(in srgb, var(--primary) 82%, white);
-  --primary-foreground: #15161c;
+  --primary-hover: color-mix(in srgb, var(--primary) 86%, black);
+  --primary-foreground: #ffffff;
+  --sombra: 0 1px 2px rgb(60 40 20 / 0.06), 0 8px 24px -12px rgb(60 40 20 / 0.18);
   --fuente-app: var(--font-geist-sans);
-  --success: #3fb68b;
-  --destructive: #e5534b;
-  --warning: #e8a33d;
+  --success: #2f9e6e;
+  --destructive: #d23f31;
+  --warning: #b97c12;
 }
 
 /* ---------- Temas (los elige cada usuario en "Apariencia") ---------- */
+:root[data-tema='oscuro'] {
+  color-scheme: dark;
+  --background: #12100d;
+  --surface: #1c1915;
+  --elevated: #27221d;
+  --border: #36302a;
+  --foreground: #f2eadf;
+  --muted-foreground: #a69886;
+  --primary-hover: color-mix(in srgb, var(--primary) 82%, white);
+  --sombra: 0 1px 2px rgb(0 0 0 / 0.3), 0 10px 30px -12px rgb(0 0 0 / 0.6);
+  --success: #47b886;
+  --destructive: #ec5b4c;
+  --warning: #e3a64a;
+}
+
 :root[data-tema='medianoche'] {
+  color-scheme: dark;
   --background: #0b0d17;
   --surface: #12152a;
   --elevated: #1a1e3a;
   --border: #262b4d;
   --foreground: #e6e8f5;
   --muted-foreground: #8f95b8;
+  --primary-hover: color-mix(in srgb, var(--primary) 82%, white);
+  --sombra: 0 10px 30px -12px rgb(0 0 0 / 0.6);
+  --success: #3fb68b;
+  --destructive: #e5534b;
+  --warning: #e8a33d;
 }
 
 :root[data-tema='bosque'] {
+  color-scheme: dark;
+  --primary-hover: color-mix(in srgb, var(--primary) 82%, white);
+  --sombra: 0 10px 30px -12px rgb(0 0 0 / 0.6);
+  --success: #3fb68b;
+  --destructive: #e5534b;
+  --warning: #e8a33d;
   --background: #0f1712;
   --surface: #16211a;
   --elevated: #1e2c23;
@@ -78,6 +111,12 @@
 }
 
 :root[data-tema='atardecer'] {
+  color-scheme: dark;
+  --primary-hover: color-mix(in srgb, var(--primary) 82%, white);
+  --sombra: 0 10px 30px -12px rgb(0 0 0 / 0.6);
+  --success: #3fb68b;
+  --destructive: #e5534b;
+  --warning: #e8a33d;
   --background: #1a1216;
   --surface: #24181e;
   --elevated: #2f2027;
@@ -88,6 +127,7 @@
 
 :root[data-tema='claro'] {
   color-scheme: light;
+  --sombra: 0 1px 2px rgb(0 0 0 / 0.05), 0 8px 24px -12px rgb(0 0 0 / 0.15);
   --background: #f6f7f9;
   --surface: #ffffff;
   --elevated: #eef0f4;
@@ -129,6 +169,22 @@
 }
 
 @layer utilities {
+  /* Paneles flotantes (la base del diseño de Kort). */
+  .panel {
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 1.25rem;
+    box-shadow: var(--sombra);
+  }
+  /* Fondo punteado del chat, como papel de cuaderno. */
+  .fondo-puntos {
+    background-image: radial-gradient(color-mix(in srgb, var(--foreground) 10%, transparent) 1px, transparent 1.2px);
+    background-size: 20px 20px;
+  }
+  .burbuja-propia a {
+    color: inherit;
+    text-decoration: underline;
+  }
   .scrollbar-thin {
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;

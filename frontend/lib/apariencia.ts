@@ -8,7 +8,7 @@
  * página (ver el script en app/layout.tsx), antes de pedirla a la API.
  */
 
-export type Tema = 'oscuro' | 'medianoche' | 'claro' | 'bosque' | 'atardecer'
+export type Tema = 'kort' | 'oscuro' | 'medianoche' | 'claro' | 'bosque' | 'atardecer'
 export type Fuente = 'geist' | 'inter' | 'nunito' | 'lora' | 'space-grotesk' | 'atkinson' | 'mono'
 
 export type Preferencias = {
@@ -20,8 +20,8 @@ export type Preferencias = {
 }
 
 export const PREFERENCIAS_POR_DEFECTO: Preferencias = {
-  tema: 'oscuro',
-  color_primario: '#ff6b5b',
+  tema: 'kort',
+  color_primario: '#e2553d',
   fuente: 'geist',
   tamanio_fuente: 16,
   compacto: false,
@@ -30,9 +30,10 @@ export const PREFERENCIAS_POR_DEFECTO: Preferencias = {
 export const CLAVE_APARIENCIA = 'kort_apariencia'
 
 export const TEMAS: { id: Tema; nombre: string; colores: [string, string, string] }[] = [
-  { id: 'oscuro', nombre: 'Oscuro', colores: ['#15161c', '#1d1f27', '#ecedef'] },
+  { id: 'kort', nombre: 'Kort (papel)', colores: ['#efe8dc', '#fbf8f2', '#231c15'] },
+  { id: 'oscuro', nombre: 'Kort noche', colores: ['#12100d', '#1c1915', '#f2eadf'] },
   { id: 'medianoche', nombre: 'Medianoche', colores: ['#0b0d17', '#12152a', '#e6e8f5'] },
-  { id: 'claro', nombre: 'Claro', colores: ['#f6f7f9', '#ffffff', '#1b1e27'] },
+  { id: 'claro', nombre: 'Claro frío', colores: ['#f6f7f9', '#ffffff', '#1b1e27'] },
   { id: 'bosque', nombre: 'Bosque', colores: ['#0f1712', '#16211a', '#e6efe8'] },
   { id: 'atardecer', nombre: 'Atardecer', colores: ['#1a1216', '#24181e', '#f3e9ec'] },
 ]
@@ -47,7 +48,7 @@ export const FUENTES: { id: Fuente; nombre: string }[] = [
   { id: 'mono', nombre: 'Monoespaciada' },
 ]
 
-export const COLORES_SUGERIDOS = ['#ff6b5b', '#3d9be8', '#3fb68b', '#e8a33d', '#d9667f', '#7c5cff', '#4fb3bf', '#f472b6']
+export const COLORES_SUGERIDOS = ['#e2553d', '#2f7d6d', '#3d6fd9', '#c98a1b', '#b8487a', '#7c5cff', '#4fb3bf', '#1f1b16']
 
 /** Texto oscuro o claro según cuán claro es el color de fondo (para que se lea bien). */
 export function colorDeTextoSobre(hex: string): string {

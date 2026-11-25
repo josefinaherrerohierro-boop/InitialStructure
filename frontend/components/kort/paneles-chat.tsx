@@ -34,7 +34,7 @@ export function PanelLateral({
   children: React.ReactNode
 }) {
   return (
-    <aside aria-label={titulo} className="flex h-full w-80 max-w-[90vw] flex-col border-l border-border bg-surface">
+    <aside aria-label={titulo} className="flex h-full w-80 max-w-[90vw] flex-col">
       <div className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
         <h2 className="text-sm font-semibold">{titulo}</h2>
         <button

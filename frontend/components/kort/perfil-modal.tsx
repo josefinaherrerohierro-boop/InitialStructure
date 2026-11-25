@@ -224,7 +224,7 @@ export function PerfilModal({
 
             {perfil.redes.length > 0 && (
               <div className="flex flex-col gap-1.5">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Redes sociales</p>
+                <p className="text-xs font-semibold text-muted-foreground">Redes sociales</p>
                 <ul className="flex flex-wrap gap-2">
                   {perfil.redes.map((r) => {
                     const info = REDES[r.red] ?? REDES.web

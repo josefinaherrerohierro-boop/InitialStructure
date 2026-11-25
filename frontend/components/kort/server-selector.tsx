@@ -49,7 +49,7 @@ export function ServerSelector({
 
   return (
     <nav aria-label="Tus servidores" className="flex flex-col gap-2">
-      <h2 className="px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Servidores</h2>
+      <h2 className="px-2 text-xs font-semibold text-muted-foreground">Servidores</h2>
       {cargando && !servidores ? (
         <div className="flex flex-col gap-1.5" aria-hidden>
           {[0, 1, 2].map((i) => (

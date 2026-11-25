@@ -6,10 +6,24 @@ import { cn } from '@/lib/utils'
 import { colorDesdeNombre, iniciales } from '@/lib/kort'
 import { urlArchivo } from '@/lib/api'
 
+/** Ícono de Kort: una "k" geométrica sobre un cuadrado redondeado. */
+export function LogoMarca({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 32 32" aria-hidden className={cn('size-8 shrink-0', className)}>
+      <rect width="32" height="32" rx="10" className="fill-primary" />
+      <path d="M11.5 8.5v15" stroke="white" strokeWidth="3.4" strokeLinecap="round" />
+      <path d="M21.5 8.5 14.5 16l7 7.5" fill="none" stroke="white" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="23.5" cy="16" r="1.9" fill="white" opacity="0.85" />
+    </svg>
+  )
+}
+
+/** Logo completo: ícono + "kort" en la tipografía de títulos. El tamaño lo da text-*. */
 export function Logo({ className }: { className?: string }) {
   return (
-    <span className={cn('select-none text-2xl font-semibold tracking-tight text-foreground', className)}>
-      kort<span className="text-primary">•</span>
+    <span className={cn('inline-flex select-none items-center gap-2 text-2xl text-foreground', className)}>
+      <LogoMarca className="size-[1.25em]" />
+      <span className="font-display font-extrabold tracking-tight">kort</span>
     </span>
   )
 }
@@ -25,7 +39,7 @@ export const Boton = forwardRef<
       ref={ref}
       disabled={disabled || cargando}
       className={cn(
-        'inline-flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60',
+        'inline-flex h-10 items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60',
         variante === 'primario' && 'bg-primary text-primary-foreground hover:bg-primary-hover',
         variante === 'secundario' && 'border border-border bg-elevated text-foreground hover:bg-border/60',
         variante === 'fantasma' && 'text-muted-foreground hover:bg-elevated hover:text-foreground',
@@ -46,7 +60,7 @@ export const Input = forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTML
       <input
         ref={ref}
         className={cn(
-          'h-11 w-full rounded-lg border border-border bg-background px-3.5 text-sm text-foreground placeholder:text-muted-foreground/70 outline-none transition-colors focus:border-primary/70 focus:ring-2 focus:ring-primary/20 aria-invalid:border-destructive',
+          'h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm text-foreground placeholder:text-muted-foreground/70 outline-none transition-colors focus:border-primary/70 focus:ring-2 focus:ring-primary/20 aria-invalid:border-destructive',
           className,
         )}
         {...props}

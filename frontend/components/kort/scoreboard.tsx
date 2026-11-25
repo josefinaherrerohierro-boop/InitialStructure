@@ -145,7 +145,7 @@ export function ScoreboardView({
         {top.length > 0 && <Podio top={top} onVerPerfil={onVerPerfil} />}
 
         <ol className="flex flex-col overflow-hidden rounded-xl border border-border">
-          <li className="grid grid-cols-[2.5rem_1fr_4.5rem_4.5rem_4.5rem] gap-2 bg-surface px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <li className="grid grid-cols-[2.5rem_1fr_4.5rem_4.5rem_4.5rem] gap-2 bg-surface px-3 py-2 text-xs font-semibold text-muted-foreground">
             <span>#</span>
             <span>Miembro</span>
             <span className="text-right">Puntos</span>
@@ -190,7 +190,7 @@ export function ScoreboardView({
 
         {movimientos && movimientos.length > 0 && (
           <section className="flex flex-col gap-2">
-            <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Últimos movimientos</h3>
+            <h3 className="text-xs font-semibold text-muted-foreground">Últimos movimientos</h3>
             <ul className="flex flex-col gap-1">
               {movimientos.map((m) => (
                 <li key={m.id} className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-surface">

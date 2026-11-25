@@ -50,7 +50,7 @@ export function MembersPanel({
   const puedeEditar = (m: Miembro) => !!servidorId && (m.usuario_id === miId || (puedeModerar && !m.es_duenio))
 
   return (
-    <aside aria-label="Miembros" className="flex h-full w-72 flex-col border-l border-border bg-surface">
+    <aside aria-label="Miembros" className="flex h-full w-72 flex-col">
       <div className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
         <h2 className="text-sm font-semibold">
           Miembros{miembros ? <span className="ml-1.5 text-muted-foreground">{miembros.length}</span> : null}

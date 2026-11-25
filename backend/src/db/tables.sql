@@ -372,8 +372,8 @@ CREATE TABLE IF NOT EXISTS puntos (
 -- 20. Apariencia elegida por cada usuario (colores, tipografía, tamaño).
 CREATE TABLE IF NOT EXISTS preferencias (
     usuario_id      INTEGER     PRIMARY KEY REFERENCES usuarios(id) ON DELETE CASCADE,
-    tema            VARCHAR(20) NOT NULL DEFAULT 'oscuro',
-    color_primario  VARCHAR(7)  NOT NULL DEFAULT '#ff6b5b',
+    tema            VARCHAR(20) NOT NULL DEFAULT 'kort',
+    color_primario  VARCHAR(7)  NOT NULL DEFAULT '#e2553d',
     fuente          VARCHAR(20) NOT NULL DEFAULT 'geist',
     tamanio_fuente  INTEGER     NOT NULL DEFAULT 16 CHECK (tamanio_fuente BETWEEN 12 AND 20),
     compacto        BOOLEAN     NOT NULL DEFAULT FALSE

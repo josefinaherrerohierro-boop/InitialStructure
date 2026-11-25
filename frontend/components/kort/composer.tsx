@@ -145,7 +145,7 @@ export function Composer({
   const restantes = MAX - texto.length
   const filas = Math.min(8, Math.max(1, texto.split('\n').length))
   const botonIcono =
-    'flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-elevated hover:text-foreground disabled:opacity-40'
+    'flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-elevated hover:text-foreground disabled:opacity-40'
 
   return (
     <form
@@ -177,7 +177,7 @@ export function Composer({
         </div>
       )}
 
-      <div className="flex items-end gap-1 rounded-xl border border-border bg-surface p-2 transition-colors focus-within:border-primary/50">
+      <div className="flex items-end gap-1 rounded-3xl border border-border bg-elevated p-1.5 transition-colors focus-within:border-primary/60 focus-within:bg-surface">
         <input
           ref={inputArchivo}
           type="file"
@@ -284,7 +284,7 @@ export function Composer({
                 <button
                   type="submit"
                   disabled={enviando || subiendo}
-                  className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-40"
+                  className="flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-40"
                   aria-label="Enviar mensaje"
                 >
                   <SendHorizontal className="size-4" />

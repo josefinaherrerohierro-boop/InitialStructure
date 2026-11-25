@@ -163,7 +163,7 @@ function ChatVista({
           const el = e.currentTarget
           cercaDelFondo.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120
         }}
-        className="scrollbar-thin min-h-0 flex-1 overflow-y-auto px-2 py-4 sm:px-4"
+        className="fondo-puntos scrollbar-thin min-h-0 flex-1 overflow-y-auto py-4"
       >
         {mostrarCargarMas && (
           <div className="flex justify-center pb-2">

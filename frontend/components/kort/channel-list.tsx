@@ -41,7 +41,7 @@ function Grupo({
   if (canales.length === 0) return null
   return (
     <div className="flex flex-col gap-0.5">
-      <h3 className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{titulo}</h3>
+      <h3 className="px-2 pb-1 text-xs font-semibold text-muted-foreground">{titulo}</h3>
       <ul className="flex flex-col gap-0.5">
         {canales.map((c) => {
           const activo = c.id === seleccionadoId
@@ -54,7 +54,7 @@ function Grupo({
                 aria-current={activo ? 'true' : undefined}
                 className={cn(
                   'flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors',
-                  activo ? 'bg-elevated text-foreground' : 'text-muted-foreground hover:bg-elevated/60 hover:text-foreground',
+                  activo ? 'bg-primary/12 font-medium text-primary' : 'text-muted-foreground hover:bg-elevated hover:text-foreground',
                 )}
               >
                 <Icono className={cn('size-4 shrink-0', activo ? 'text-primary' : 'opacity-70')} aria-hidden />
@@ -110,7 +110,7 @@ export function ChannelList({
   return (
     <section aria-label={`Canales de ${servidor.nombre}`} className="flex min-h-0 flex-1 flex-col gap-3">
       <div className="flex items-center justify-between gap-2 px-2">
-        <h2 className="truncate text-sm font-semibold">{servidor.nombre}</h2>
+        <h2 className="truncate font-display text-base font-bold">{servidor.nombre}</h2>
         <div className="flex shrink-0 items-center">
           {permisos.esModerador && (
             <button
@@ -156,7 +156,7 @@ export function ChannelList({
         ) : (
           <>
             <div className="flex flex-col gap-0.5">
-              <h3 className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Servidor</h3>
+              <h3 className="px-2 pb-1 text-xs font-semibold text-muted-foreground">Servidor</h3>
               <ul className="grid grid-cols-2 gap-0.5">
                 {HERRAMIENTAS.map(({ id, nombre, Icono }) => (
                   <li key={id}>

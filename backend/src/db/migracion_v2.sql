@@ -244,8 +244,8 @@ CREATE TABLE IF NOT EXISTS puntos (
 -- 20. Apariencia elegida por cada usuario (colores, tipografía, tamaño).
 CREATE TABLE IF NOT EXISTS preferencias (
     usuario_id      INTEGER     PRIMARY KEY REFERENCES usuarios(id) ON DELETE CASCADE,
-    tema            VARCHAR(20) NOT NULL DEFAULT 'oscuro',
-    color_primario  VARCHAR(7)  NOT NULL DEFAULT '#ff6b5b',
+    tema            VARCHAR(20) NOT NULL DEFAULT 'kort',
+    color_primario  VARCHAR(7)  NOT NULL DEFAULT '#e2553d',
     fuente          VARCHAR(20) NOT NULL DEFAULT 'geist',
     tamanio_fuente  INTEGER     NOT NULL DEFAULT 16 CHECK (tamanio_fuente BETWEEN 12 AND 20),
     compacto        BOOLEAN     NOT NULL DEFAULT FALSE
@@ -263,3 +263,9 @@ WHERE NOT EXISTS (
     SELECT 1 FROM historial_servidores h
     WHERE h.usuario_id = m.usuario_id AND h.servidor_id = m.servidor_id
 );
+
+
+-- Identidad visual propia de Kort: el tema por defecto pasa a ser 'kort'
+-- (si ya habías creado la tabla con la versión anterior de este archivo).
+ALTER TABLE preferencias ALTER COLUMN tema SET DEFAULT 'kort';
+ALTER TABLE preferencias ALTER COLUMN color_primario SET DEFAULT '#e2553d';

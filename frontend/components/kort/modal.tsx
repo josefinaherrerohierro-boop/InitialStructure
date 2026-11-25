@@ -39,7 +39,7 @@ export function Modal({
         <div className="flex flex-col gap-5 p-6">
           <div className="flex items-start justify-between gap-4">
             <div className="flex flex-col gap-1">
-              <h2 id="modal-titulo" className="text-lg font-semibold text-balance">
+              <h2 id="modal-titulo" className="font-display text-xl font-bold text-balance">
                 {titulo}
               </h2>
               {descripcion && <p className="text-sm leading-relaxed text-muted-foreground">{descripcion}</p>}

@@ -91,7 +91,7 @@ export function InicioSidebar({
         )}
       </div>
 
-      <h3 className="px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Mensajes directos</h3>
+      <h3 className="px-2 text-xs font-semibold text-muted-foreground">Mensajes directos</h3>
       <ul className="scrollbar-thin flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto pr-1">
         {conversaciones?.length === 0 && (
           <li className="px-2 text-sm text-muted-foreground">Todavía no tenés conversaciones. Escribile a un amigo.</li>
@@ -264,7 +264,7 @@ export function AmigosView({
             {pendientes === 0 && <p className="py-10 text-center text-sm text-muted-foreground">No hay solicitudes pendientes.</p>}
             {!!solicitudes?.recibidas.length && (
               <section>
-                <h3 className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Recibidas</h3>
+                <h3 className="px-3 pb-1 text-xs font-semibold text-muted-foreground">Recibidas</h3>
                 <ul>
                   {solicitudes.recibidas.map((s) =>
                     fila(s.usuario, 'Quiere ser tu amigo', (
@@ -293,7 +293,7 @@ export function AmigosView({
             )}
             {!!solicitudes?.enviadas.length && (
               <section>
-                <h3 className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Enviadas</h3>
+                <h3 className="px-3 pb-1 text-xs font-semibold text-muted-foreground">Enviadas</h3>
                 <ul>
                   {solicitudes.enviadas.map((s) =>
                     fila(s.usuario, 'Esperando respuesta', (

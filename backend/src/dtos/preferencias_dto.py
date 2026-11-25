@@ -2,8 +2,8 @@ from pydantic import BaseModel
 
 
 class PreferenciasDTO(BaseModel):
-    tema: str = "oscuro"
-    color_primario: str = "#ff6b5b"
+    tema: str = "kort"
+    color_primario: str = "#e2553d"
     fuente: str = "geist"
     tamanio_fuente: int = 16
     compacto: bool = False

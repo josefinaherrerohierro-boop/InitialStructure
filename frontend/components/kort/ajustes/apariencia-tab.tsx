@@ -54,7 +54,7 @@ export function AparienciaTab({ inicial, onGuardado }: { inicial: Preferencias; 
       </p>
 
       <Seccion titulo="Tema">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {TEMAS.map((t) => (
             <button
               key={t.id}

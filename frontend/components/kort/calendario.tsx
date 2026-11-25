@@ -252,7 +252,7 @@ export function CalendarioView({
           </div>
           <div className="grid grid-cols-7 overflow-hidden rounded-xl border border-border">
             {DIAS.map((d) => (
-              <div key={d} className="border-b border-border bg-surface py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <div key={d} className="border-b border-border bg-surface py-2 text-center text-xs font-semibold text-muted-foreground">
                 {d}
               </div>
             ))}
@@ -326,7 +326,7 @@ export function CalendarioView({
           )}
           {proximos.length > 0 && (
             <div className="flex flex-col gap-2">
-              <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Próximos</h3>
+              <h3 className="text-xs font-semibold text-muted-foreground">Próximos</h3>
               {proximos.map((e) => (
                 <button
                   key={e.id}

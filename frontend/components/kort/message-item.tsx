@@ -60,6 +60,7 @@ export function MessageItem({
   const [ocupado, setOcupado] = useState(false)
 
   const esEncuesta = !!mensaje.encuesta
+  const propio = miId !== undefined && mensaje.autor_id === miId
   const nombre = nombreVisible(mensaje)
 
   async function guardar() {
@@ -117,48 +118,45 @@ export function MessageItem({
   return (
     <li
       className={cn(
-        'mensaje group relative flex gap-3 rounded-lg px-3 transition-colors hover:bg-surface/70',
-        agrupado ? 'py-0.5' : 'mt-3 py-1.5',
-        (editando || confirmarBorrado) && 'bg-surface/70',
-        mensaje.fijado && 'border-l-2 border-warning/60',
+        'mensaje group relative flex gap-2.5 px-3 sm:px-5',
+        propio && 'flex-row-reverse',
+        agrupado ? 'mt-1' : 'mt-4',
       )}
     >
-      <div className="w-9 shrink-0">
-        {agrupado ? (
-          <time
-            dateTime={mensaje.fecha}
-            className="block pt-1 text-right text-[10px] leading-5 text-muted-foreground opacity-0 group-hover:opacity-100"
-          >
-            {soloHora(mensaje.fecha)}
-          </time>
-        ) : (
-          <button
-            type="button"
-            onClick={() => onVerPerfil?.(mensaje.autor_id)}
-            disabled={!onVerPerfil}
-            aria-label={`Ver perfil de ${nombre}`}
-            className="rounded-lg"
-          >
-            <Avatar nombre={mensaje.autor_username} url={mensaje.autor_avatar_url} />
-          </button>
-        )}
-      </div>
-
-      <div className="min-w-0 flex-1">
-        {!agrupado && (
-          <div className="flex items-baseline gap-2">
+      {/* Avatar: solo para los mensajes de los demás, en el primero de cada grupo. */}
+      {!propio && (
+        <div className="w-9 shrink-0 self-start">
+          {!agrupado && (
             <button
               type="button"
               onClick={() => onVerPerfil?.(mensaje.autor_id)}
               disabled={!onVerPerfil}
-              className="text-sm font-semibold hover:underline disabled:no-underline"
+              aria-label={`Ver perfil de ${nombre}`}
+              className="mt-5 rounded-lg"
             >
-              {nombre}
+              <Avatar nombre={mensaje.autor_username} url={mensaje.autor_avatar_url} />
             </button>
-            {mensaje.autor_apodo && (
+          )}
+        </div>
+      )}
+
+      <div className={cn('flex min-w-0 max-w-[min(42rem,85%)] flex-col', propio ? 'items-end' : 'items-start')}>
+        {!agrupado && (
+          <div className={cn('flex items-baseline gap-2 px-1 pb-1', propio && 'flex-row-reverse')}>
+            {!propio && (
+              <button
+                type="button"
+                onClick={() => onVerPerfil?.(mensaje.autor_id)}
+                disabled={!onVerPerfil}
+                className="text-sm font-semibold hover:underline disabled:no-underline"
+              >
+                {nombre}
+              </button>
+            )}
+            {!propio && mensaje.autor_apodo && (
               <span className="text-xs text-muted-foreground">@{mensaje.autor_username}</span>
             )}
-            <time dateTime={mensaje.fecha} className="text-xs text-muted-foreground">
+            <time dateTime={mensaje.fecha} className="text-[11px] text-muted-foreground">
               {horaMensaje(mensaje.fecha)}
             </time>
             {mensaje.fijado && <Pin className="size-3 self-center text-warning" aria-label="Fijado" />}
@@ -166,7 +164,7 @@ export function MessageItem({
         )}
 
         {editando ? (
-          <div className="mt-1 flex flex-col gap-1.5">
+          <div className="flex w-[min(36rem,70vw)] flex-col gap-1.5">
             <label htmlFor={`editar-${mensaje.id}`} className="sr-only">
               Editar mensaje
             </label>
@@ -217,9 +215,20 @@ export function MessageItem({
         ) : (
           <>
             {mensaje.contenido && (
-              <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/95">
+              <p
+                title={soloHora(mensaje.fecha)}
+                className={cn(
+                  'w-fit max-w-full whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2 text-sm leading-relaxed',
+                  propio
+                    ? 'burbuja-propia rounded-tr-md bg-primary text-primary-foreground'
+                    : 'rounded-tl-md border border-border bg-elevated text-foreground',
+                  agrupado && (propio ? 'rounded-tr-2xl' : 'rounded-tl-2xl'),
+                  mensaje.fijado && 'ring-2 ring-warning/60 ring-offset-2 ring-offset-surface',
+                  (editando || confirmarBorrado) && 'opacity-70',
+                )}
+              >
                 <TextoConLinks texto={mensaje.contenido} />
-                {mensaje.editado && <span className="ml-1.5 text-[11px] text-muted-foreground">(editado)</span>}
+                {mensaje.editado && <span className="ml-1.5 text-[11px] opacity-60">(editado)</span>}
               </p>
             )}
             {mensaje.adjunto && <AdjuntoView adjunto={mensaje.adjunto} />}
@@ -240,7 +249,7 @@ export function MessageItem({
                     aria-pressed={mia}
                     aria-label={`${r.emoji}: ${r.cantidad}`}
                     className={cn(
-                      'flex h-7 items-center gap-1 rounded-lg border px-2 text-sm transition-colors',
+                      'flex h-7 items-center gap-1 rounded-full border px-2.5 text-sm transition-colors',
                       mia ? 'border-primary/60 bg-primary/15' : 'border-border bg-surface hover:border-primary/40',
                     )}
                   >
@@ -257,7 +266,8 @@ export function MessageItem({
       {!editando && hayAcciones && (
         <div
           className={cn(
-            'absolute -top-3 right-3 z-10 flex items-center gap-0.5 rounded-lg border border-border bg-elevated p-0.5 shadow-md shadow-black/30',
+            'absolute -top-3 z-10 flex items-center gap-0.5 rounded-full border border-border bg-surface p-0.5 shadow-[var(--sombra)]',
+            propio ? 'left-5' : 'right-5',
             confirmarBorrado ? 'flex' : 'hidden group-hover:flex group-focus-within:flex',
           )}
         >

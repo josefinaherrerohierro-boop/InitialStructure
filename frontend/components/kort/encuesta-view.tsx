@@ -46,7 +46,7 @@ export function EncuestaView({
   const maximo = Math.max(1, ...encuesta.opciones.map((o) => o.votos))
 
   return (
-    <div className="mt-1.5 w-full max-w-md rounded-xl border border-border bg-surface p-3.5">
+    <div className="mt-1.5 w-[min(28rem,75vw)] rounded-2xl border border-border bg-surface p-3.5">
       <div className="mb-3 flex items-start gap-2">
         <BarChart3 className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
         <p className="font-semibold leading-snug">{pregunta}</p>

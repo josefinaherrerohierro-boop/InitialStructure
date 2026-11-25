@@ -75,7 +75,7 @@ export function VistaPreviaLinks({ texto }: { texto: string }) {
               href={url}
               target="_blank"
               rel="noopener noreferrer nofollow"
-              className="group/yt block w-full max-w-sm overflow-hidden rounded-lg border border-border bg-surface"
+              className="group/yt block w-80 max-w-[75vw] overflow-hidden rounded-lg border border-border bg-surface"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -105,7 +105,7 @@ export function VistaPreviaLinks({ texto }: { texto: string }) {
             href={url}
             target="_blank"
             rel="noopener noreferrer nofollow"
-            className="flex w-full max-w-sm items-center gap-2.5 rounded-lg border border-border border-l-primary border-l-4 bg-surface px-3 py-2 hover:bg-elevated"
+            className="flex w-80 max-w-[75vw] items-center gap-2.5 rounded-lg border border-border border-l-primary border-l-4 bg-surface px-3 py-2 hover:bg-elevated"
           >
             <Link2 className="size-4 shrink-0 text-primary" aria-hidden />
             <span className="min-w-0 flex-1">

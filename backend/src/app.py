@@ -2,7 +2,8 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -53,6 +54,26 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="Kort API", lifespan=lifespan)
+
+
+# Errores inesperados (por ejemplo, si falta correr la migración de la base):
+# se responden como JSON *dentro* de CORS. Sin esto, el navegador recibe un 500
+# sin encabezados CORS y lo muestra como "no pudimos conectarnos", lo que confunde.
+# Tiene que registrarse ANTES que CORSMiddleware para quedar por dentro de él.
+@app.middleware("http")
+async def errores_inesperados(request: Request, call_next):
+    try:
+        return await call_next(request)
+    except Exception:
+        log.exception("Error inesperado en %s %s", request.method, request.url.path)
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "ErrorInterno",
+                "message": "Error interno del servidor de Kort. Revisá la terminal del backend "
+                "(¿falta correr migracion_v2.sql?).",
+            },
+        )
 
 # CORS: permite que el frontend (Next.js, otro puerto) llame a esta API
 # desde el navegador. Sin esto, el navegador bloquea las peticiones.

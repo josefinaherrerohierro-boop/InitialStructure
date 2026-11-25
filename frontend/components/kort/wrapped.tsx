@@ -22,6 +22,8 @@ const FONDOS = [
 ]
 
 const n = (x: number) => x.toLocaleString('es-AR')
+/** "1 mensaje", "2 mensajes"... */
+const plural = (x: number, uno: string, varios: string) => `${n(x)} ${x === 1 ? uno : varios}`
 
 /** Número que "sube" desde 0 (animación de las placas). */
 function NumeroAnimado({ valor }: { valor: number }) {
@@ -74,11 +76,12 @@ function armarPlacas(w: Wrapped): { clave: string; contenido: React.ReactNode }[
           <Grande>
             <NumeroAnimado valor={w.total_mensajes} />
           </Grande>
-          <Titulo>mensajes en tus servidores</Titulo>
+          <Titulo>{w.total_mensajes === 1 ? 'mensaje' : 'mensajes'} en tus servidores</Titulo>
           <p className="text-white/80">
-            Son {n(w.total_palabras)} palabras: más o menos {n(Math.max(1, Math.round(w.total_palabras / 250)))}{' '}
-            {Math.round(w.total_palabras / 250) === 1 ? 'página' : 'páginas'} de un libro.
-            {w.total_mensajes_directos > 0 && ` Y ${n(w.total_mensajes_directos)} mensajes directos más.`}
+            {w.total_palabras === 1 ? 'Es 1 palabra' : `Son ${n(w.total_palabras)} palabras`}: más o menos{' '}
+            {plural(Math.max(1, Math.round(w.total_palabras / 250)), 'página', 'páginas')} de un libro.
+            {w.total_mensajes_directos > 0 &&
+              ` Y ${plural(w.total_mensajes_directos, 'mensaje directo', 'mensajes directos')} más.`}
           </p>
         </>
       ),
@@ -119,7 +122,7 @@ function armarPlacas(w: Wrapped): { clave: string; contenido: React.ReactNode }[
             <NumeroAnimado valor={w.racha_mas_larga} /> 🔥
           </Grande>
           <Titulo>{w.racha_mas_larga === 1 ? 'día' : 'días seguidos'} escribiendo</Titulo>
-          <p className="text-white/80">En total estuviste activo {n(w.dias_activos)} días del año.</p>
+          <p className="text-white/80">En total estuviste activo {plural(w.dias_activos, 'día', 'días')} del año.</p>
         </>
       ),
     })
@@ -133,7 +136,7 @@ function armarPlacas(w: Wrapped): { clave: string; contenido: React.ReactNode }[
           <Titulo>Tu lugar en el mundo</Titulo>
           <p className="text-5xl font-black text-white">#{w.canal_favorito.canal}</p>
           <p className="text-white/80">
-            en {w.canal_favorito.servidor}, con {n(w.canal_favorito.cantidad)} mensajes tuyos.
+            en {w.canal_favorito.servidor}, con {plural(w.canal_favorito.cantidad, 'mensaje tuyo', 'mensajes tuyos')}.
           </p>
           {w.servidores_mas_activos.length > 1 && (
             <ol className="flex w-full max-w-xs flex-col gap-2 text-left">
@@ -169,7 +172,7 @@ function armarPlacas(w: Wrapped): { clave: string; contenido: React.ReactNode }[
           )}
           {w.reacciones_recibidas > 0 && (
             <p className="text-white/80">
-              Y tus mensajes recibieron <strong className="text-white">{n(w.reacciones_recibidas)} reacciones</strong>.
+              Y tus mensajes recibieron <strong className="text-white">{plural(w.reacciones_recibidas, 'reacción', 'reacciones')}</strong>.
             </p>
           )}
         </>
@@ -188,7 +191,7 @@ function armarPlacas(w: Wrapped): { clave: string; contenido: React.ReactNode }[
               <Avatar nombre={w.persona_favorita.usuario.username} url={w.persona_favorita.usuario.avatar_url} tamanio="xl" className="ring-4 ring-white/40" />
               <p className="text-4xl font-black text-white">{w.persona_favorita.usuario.username}</p>
               <p className="text-white/80">
-                fue con quien más hablaste por privado: {n(w.persona_favorita.cantidad)} mensajes.
+                fue con quien más hablaste por privado: {plural(w.persona_favorita.cantidad, 'mensaje', 'mensajes')}.
               </p>
             </>
           )}

@@ -24,6 +24,7 @@ const formatoMes = new Intl.DateTimeFormat('es-AR', { month: 'long', year: 'nume
 const formatoDia = new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })
 const formatoHora = new Intl.DateTimeFormat('es-AR', { hour: '2-digit', minute: '2-digit' })
 
+const capitalizar = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 const mismoDia = (a: Date, b: Date) => a.toDateString() === b.toDateString()
 const sinHora = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
 
@@ -238,7 +239,7 @@ export function CalendarioView({
       <div className="mx-auto grid max-w-6xl gap-6 p-4 lg:grid-cols-[1fr_22rem]">
         <section aria-label="Calendario" className="flex flex-col gap-3">
           <div className="flex items-center gap-2">
-            <h2 className="flex-1 text-lg font-semibold capitalize">{formatoMes.format(mes)}</h2>
+            <h2 className="flex-1 text-lg font-semibold">{capitalizar(formatoMes.format(mes))}</h2>
             <Boton variante="fantasma" className="h-9 px-3" onClick={() => { setMes(new Date(hoy.getFullYear(), hoy.getMonth(), 1)); setElegido(hoy) }}>
               Hoy
             </Boton>
@@ -302,7 +303,7 @@ export function CalendarioView({
 
         <aside className="flex flex-col gap-4">
           <div className="flex items-center justify-between gap-2">
-            <h3 className="font-semibold capitalize">{formatoDia.format(elegido)}</h3>
+            <h3 className="font-semibold">{capitalizar(formatoDia.format(elegido))}</h3>
             {permisos.puedeEscribir && (
               <Boton className="h-9 px-3" onClick={() => setFormulario({ abierto: true, evento: null })}>
                 <CalendarPlus className="size-4" aria-hidden />

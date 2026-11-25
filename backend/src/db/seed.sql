@@ -122,3 +122,105 @@ SELECT m.usuario_id, m.servidor_id, s.nombre, m.fecha_union,
        CASE WHEN m.baneado THEN 'baneado' END
 FROM miembros m
 JOIN servidores s ON s.id = m.servidor_id;
+
+
+-- =====================================================================
+-- Datos de ejemplo de las funciones nuevas (v2)
+-- =====================================================================
+
+-- APODOS Y ORDEN DE SERVIDORES -----------------------------------------
+UPDATE miembros SET apodo = 'Profe Ana' WHERE usuario_id = 1 AND servidor_id = 1;
+UPDATE miembros SET apodo = 'Brunito'   WHERE usuario_id = 2 AND servidor_id = 3;
+UPDATE miembros SET posicion = 0 WHERE usuario_id = 1 AND servidor_id = 3; -- ana ve primero "Gamers del barrio"
+UPDATE miembros SET posicion = 1 WHERE usuario_id = 1 AND servidor_id = 1;
+
+-- PERFILES ------------------------------------------------------------
+UPDATE usuarios SET bio = 'Programadora y fan del ajedrez ♟️' WHERE id = 1;
+UPDATE usuarios SET bio = 'Moderador de 4to B. Siempre con mate.' WHERE id = 2;
+UPDATE usuarios SET bio = 'Gamer de noche, estudiante de día.' WHERE id = 3;
+
+INSERT INTO etiquetas_usuario (usuario_id, etiqueta) VALUES
+(1, 'Programación'), (1, 'Ajedrez'), (2, 'Fútbol'), (2, 'Música'), (3, 'Gamer'), (3, 'Anime');
+
+INSERT INTO redes_sociales (usuario_id, red, url) VALUES
+(1, 'github',    'https://github.com/'),
+(1, 'instagram', 'https://instagram.com/'),
+(3, 'twitch',    'https://twitch.tv/');
+
+-- AMISTADES -----------------------------------------------------------
+INSERT INTO amistades (solicitante_id, receptor_id, estado, fecha, fecha_respuesta) VALUES
+(1, 2, 'aceptada',  CURRENT_TIMESTAMP - INTERVAL '80 days', CURRENT_TIMESTAMP - INTERVAL '79 days'), -- ana y bruno
+(1, 3, 'aceptada',  CURRENT_TIMESTAMP - INTERVAL '50 days', CURRENT_TIMESTAMP - INTERVAL '50 days'), -- ana y carla
+(4, 2, 'aceptada',  CURRENT_TIMESTAMP - INTERVAL '20 days', CURRENT_TIMESTAMP - INTERVAL '19 days'), -- diego y bruno
+(5, 1, 'pendiente', CURRENT_TIMESTAMP - INTERVAL '1 day',   NULL);                                    -- elena le pidió a ana
+
+-- MENSAJES DIRECTOS ---------------------------------------------------
+INSERT INTO mensajes_directos (remitente_id, destinatario_id, contenido, fecha, leido) VALUES
+(2, 1, '¿Viste lo del TP?',                       CURRENT_TIMESTAMP - INTERVAL '3 hours',    TRUE),
+(1, 2, 'Sí, mañana lo terminamos.',               CURRENT_TIMESTAMP - INTERVAL '2 hours',    TRUE),
+(2, 1, 'Dale, te paso el diagrama a la noche 👍', CURRENT_TIMESTAMP - INTERVAL '1 hour',     FALSE),
+(3, 1, '¿Jugamos hoy?',                           CURRENT_TIMESTAMP - INTERVAL '30 minutes', FALSE);
+
+-- REACCIONES Y FIJADOS ------------------------------------------------
+INSERT INTO reacciones (mensaje_id, usuario_id, emoji) VALUES
+(1, 2, '👋'), (1, 3, '👋'), (1, 4, '🎉'), (3, 2, '👍'), (7, 1, '🔥'), (10, 1, '🎮');
+UPDATE mensajes SET fijado = TRUE WHERE id IN (1, 3);
+
+-- ENCUESTA (se publica como un mensaje del canal #general) ------------
+INSERT INTO mensajes (canal_id, autor_id, contenido, fecha) VALUES
+(1, 2, '¿Qué día hacemos la juntada?', CURRENT_TIMESTAMP - INTERVAL '6 hours');
+INSERT INTO encuestas (mensaje_id, multiple, fecha_limite)
+SELECT id, FALSE, CURRENT_TIMESTAMP + INTERVAL '2 days' FROM mensajes WHERE contenido = '¿Qué día hacemos la juntada?';
+INSERT INTO opciones_encuesta (encuesta_id, texto, orden)
+SELECT e.id, o.texto, o.orden FROM encuestas e
+CROSS JOIN (VALUES ('Viernes', 0), ('Sábado', 1), ('Domingo', 2)) AS o(texto, orden);
+INSERT INTO votos_encuesta (encuesta_id, opcion_id, usuario_id)
+SELECT o.encuesta_id, o.id, v.usuario_id FROM opciones_encuesta o
+JOIN (VALUES ('Sábado', 1), ('Sábado', 3), ('Viernes', 4)) AS v(texto, usuario_id) ON v.texto = o.texto;
+
+-- PUBLICACIONES -------------------------------------------------------
+INSERT INTO publicaciones (autor_id, servidor_id, contenido, fecha) VALUES
+(1, NULL, '¡Terminé el curso de Python! 🐍',                    CURRENT_TIMESTAMP - INTERVAL '2 days'),
+(2, NULL, 'Hoy se juega el clásico. ¿Quién gana?',              CURRENT_TIMESTAMP - INTERVAL '1 day'),
+(1, 1,    'Recuerden traer la compu el jueves para el repaso.', CURRENT_TIMESTAMP - INTERVAL '5 hours');
+INSERT INTO publicacion_likes (publicacion_id, usuario_id) VALUES (1, 2), (1, 3), (2, 1);
+INSERT INTO publicacion_comentarios (publicacion_id, autor_id, contenido) VALUES
+(1, 2, '¡Felicitaciones!'), (2, 1, 'Obvio que nosotros 😎');
+
+-- ESTADOS (duran 24 horas) --------------------------------------------
+INSERT INTO estados (usuario_id, contenido, color_fondo, fecha, vence) VALUES
+(2, 'Estudiando para el parcial 📚', '#3d9be8', CURRENT_TIMESTAMP - INTERVAL '2 hours', CURRENT_TIMESTAMP + INTERVAL '22 hours'),
+(3, 'Stream esta noche 🎮',          '#7c5cff', CURRENT_TIMESTAMP - INTERVAL '1 hour',  CURRENT_TIMESTAMP + INTERVAL '23 hours');
+
+-- CALENDARIO ----------------------------------------------------------
+INSERT INTO eventos (servidor_id, creador_id, titulo, descripcion, lugar, inicio, fin) VALUES
+(1, 1, 'Repaso para el parcial', 'Traigan dudas.', 'sala-de-estudio',
+   date_trunc('day', CURRENT_TIMESTAMP) + INTERVAL '2 days 18 hours', date_trunc('day', CURRENT_TIMESTAMP) + INTERVAL '2 days 20 hours'),
+(1, 2, 'Entrega del proyecto', '', '', date_trunc('day', CURRENT_TIMESTAMP) + INTERVAL '9 days 23 hours', NULL),
+(3, 3, 'Torneo de Rocket League', 'Equipos de a 2.', 'partidas',
+   date_trunc('day', CURRENT_TIMESTAMP) + INTERVAL '4 days 21 hours', NULL);
+INSERT INTO evento_asistentes (evento_id, usuario_id) VALUES (1, 1), (1, 2), (1, 3), (2, 2), (3, 3), (3, 1);
+
+-- TAREAS --------------------------------------------------------------
+INSERT INTO tareas (servidor_id, creador_id, asignado_id, titulo, descripcion, fecha_limite, estado, fecha_completada) VALUES
+(1, 1, 2,    'Diagrama de clases',    'Usar draw.io', CURRENT_TIMESTAMP + INTERVAL '3 days', 'en_progreso', NULL),
+(1, 1, 3,    'Armar la presentación', '',             CURRENT_TIMESTAMP + INTERVAL '5 days', 'pendiente',   NULL),
+(1, 2, 4,    'Probar los endpoints',  'Con Swagger',  CURRENT_TIMESTAMP - INTERVAL '1 day',  'hecha',       CURRENT_TIMESTAMP - INTERVAL '1 day'),
+(1, 1, NULL, 'Conseguir proyector',   '',             NULL,                                  'pendiente',   NULL);
+
+-- SCOREBOARD ----------------------------------------------------------
+INSERT INTO puntos (servidor_id, usuario_id, otorgado_por, cantidad, motivo) VALUES
+(1, 3, 2,    10, 'Ayudó con las FK compuestas'),
+(1, 4, 1,     5, 'Primera entrega a tiempo'),
+(3, 1, NULL,  3, 'Ganó ta-te-ti en una llamada');
+
+-- SERVIDOR TEMPORAL (se borra solo en 3 días) -------------------------
+INSERT INTO servidores (nombre, duenio_id, fecha_creacion, expira_en) VALUES
+('Juntada del sábado', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '3 days'); -- id 6
+INSERT INTO canales (servidor_id, nombre, tipo) VALUES (6, 'general', 'texto');
+INSERT INTO roles (servidor_id, nombre, puede_escribir) VALUES (6, '@everyone', TRUE);
+INSERT INTO miembros (usuario_id, servidor_id) VALUES (1, 6), (2, 6);
+INSERT INTO roles_miembro (usuario_id, rol_id)
+SELECT m.u, r.id FROM roles r CROSS JOIN (VALUES (1), (2)) AS m(u) WHERE r.servidor_id = 6;
+INSERT INTO historial_servidores (usuario_id, servidor_id, servidor_nombre) VALUES
+(1, 6, 'Juntada del sábado'), (2, 6, 'Juntada del sábado');

@@ -59,7 +59,7 @@ export function JuegosLlamada({ voz, miId }: { voz: Voz; miId: number }) {
   return (
     <div className="flex flex-1 flex-col items-center gap-5 overflow-y-auto p-6">
       <div className="flex w-full max-w-md items-center justify-between gap-3">
-        <h2 className="font-semibold capitalize">{juego.nombre}</h2>
+        <h2 className="font-semibold">{juego.nombre.charAt(0).toUpperCase() + juego.nombre.slice(1)}</h2>
         {(soyJugador || juego.estado === 'terminado') && (
           <Boton variante="fantasma" className="h-8 px-2 text-xs" onClick={() => voz.accionJuego({ accion: 'cancelar' })}>
             <X className="size-3.5" aria-hidden />

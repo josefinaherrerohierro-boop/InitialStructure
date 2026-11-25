@@ -33,24 +33,26 @@ export function EstadosBarra({ yo }: { yo: Usuario }) {
   return (
     <section aria-label="Estados" className="flex gap-4 overflow-x-auto pb-1">
       <div className="flex w-16 shrink-0 flex-col items-center gap-1.5">
-        <button
-          type="button"
-          onClick={() => (mios ? setViendo(grupos.indexOf(mios)) : setCreando(true))}
-          className={cn('relative rounded-2xl p-0.5', mios && 'bg-gradient-to-tr from-primary to-warning')}
-          aria-label={mios ? 'Ver mis estados' : 'Subir un estado'}
-        >
-          <span className="block rounded-[14px] bg-background p-0.5">
-            <Avatar nombre={yo.username} url={yo.avatar_url} tamanio="lg" />
-          </span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setCreando(true)}
-          className="-mt-5 flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground ring-2 ring-background"
-          aria-label="Subir un estado"
-        >
-          <Plus className="size-3.5" />
-        </button>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => (mios ? setViendo(grupos.indexOf(mios)) : setCreando(true))}
+            className={cn('rounded-2xl p-0.5', mios && 'bg-gradient-to-tr from-primary to-warning')}
+            aria-label={mios ? 'Ver mis estados' : 'Subir un estado'}
+          >
+            <span className="block rounded-[14px] bg-background p-0.5">
+              <Avatar nombre={yo.username} url={yo.avatar_url} tamanio="lg" />
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setCreando(true)}
+            className="absolute -right-1 -bottom-1 flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground ring-2 ring-background"
+            aria-label="Subir otro estado"
+          >
+            <Plus className="size-3.5" />
+          </button>
+        </div>
         <span className="text-[11px] text-muted-foreground">Tu estado</span>
       </div>
 

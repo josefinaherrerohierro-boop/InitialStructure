@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, Copy, Hash, Volume2 } from 'lucide-react'
+import { AudioLines, Check, Copy, MessageCircle } from 'lucide-react'
 import {
   crearCanal,
   crearInvitacion,
@@ -211,7 +211,7 @@ export function CrearCanalModal({
         tipo,
         solo_lectura: tipo === 'texto' ? soloLectura : false,
       })
-      toast.exito(`Creaste el canal ${c.tipo === 'texto' ? '#' : ''}${c.nombre}.`)
+      toast.exito(`Creaste ${c.tipo === 'texto' ? 'el canal' : 'la sala de voz'} ${c.nombre}.`)
       onCreado(c)
       cerrar()
     } catch (err) {
@@ -221,9 +221,9 @@ export function CrearCanalModal({
     }
   }
 
-  const opciones: { valor: TipoCanal; etiqueta: string; desc: string; Icono: typeof Hash }[] = [
-    { valor: 'texto', etiqueta: 'Texto', desc: 'Mensajes, links y charla escrita', Icono: Hash },
-    { valor: 'voz', etiqueta: 'Voz', desc: 'Para hablar en tiempo real', Icono: Volume2 },
+  const opciones: { valor: TipoCanal; etiqueta: string; desc: string; Icono: typeof MessageCircle }[] = [
+    { valor: 'texto', etiqueta: 'Texto', desc: 'Mensajes, links y charla escrita', Icono: MessageCircle },
+    { valor: 'voz', etiqueta: 'Voz', desc: 'Para hablar en tiempo real', Icono: AudioLines },
   ]
 
   return (

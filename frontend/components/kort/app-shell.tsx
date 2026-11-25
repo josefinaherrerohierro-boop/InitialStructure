@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import useSWR, { SWRConfig } from 'swr'
-import { AtSign, Hash, House, Images, Lock, Menu, Newspaper, Pin, Search, Users, Volume2, X } from 'lucide-react'
+import { AtSign, House, Images, Menu, Newspaper, Pin, Search, Users, X } from 'lucide-react'
 import {
   ApiError,
   clearToken,
@@ -30,7 +30,7 @@ import { AjustesUsuario } from './ajustes/ajustes-usuario'
 import { AccionesServidor, MenuUsuario, PestaniasServidores } from './barra-superior'
 import { AparienciaTab } from './ajustes/apariencia-tab'
 import { CalendarioView } from './calendario'
-import { ChannelList, HERRAMIENTAS, type Herramienta } from './channel-list'
+import { BarraServidor, type VistaServidor } from './barra-servidor'
 import { ConfiguracionServidor } from './config/configuracion-servidor'
 import { ChatPanel, DirectoPanel } from './chat-panel'
 import { EmptyState } from './empty-state'
@@ -41,6 +41,7 @@ import { CrearCanalModal, CrearServidorModal, InvitarModal, UnirmeModal } from '
 import { BusquedaPanel, FijadosPanel, MultimediaPanel } from './paneles-chat'
 import { PerfilModal } from './perfil-modal'
 import { PublicacionesLista } from './publicaciones'
+import { ResumenServidor } from './resumen-servidor'
 import { ScoreboardView } from './scoreboard'
 import { TareasView } from './tareas'
 import { ServerSelector } from './server-selector'
@@ -81,8 +82,8 @@ function AppShellInterno() {
   const [enInicio, setEnInicio] = useState(() => params.has('inicio'))
   const [seleccionInicio, setSeleccionInicio] = useState<SeleccionInicio>({ tipo: 'amigos' })
   const [canalPorServidor, setCanalPorServidor] = useState<Record<number, number>>({})
-  // Si está elegida una herramienta (calendario, tareas...) se muestra en vez del canal.
-  const [herramientaPorServidor, setHerramientaPorServidor] = useState<Record<number, Herramienta | null>>({})
+  // Qué se ve en el centro de cada servidor: el resumen, una herramienta o (null) un canal.
+  const [herramientaPorServidor, setHerramientaPorServidor] = useState<Record<number, VistaServidor | null>>({})
   // En pantallas chicas el panel derecho arranca cerrado (si no, tapa el chat).
   const [panel, setPanel] = useState<PanelDerecho>(() =>
     typeof window !== 'undefined' && window.innerWidth < 1024 ? null : 'miembros',
@@ -136,7 +137,12 @@ function AppShellInterno() {
     getRoles(servidor!.id),
   )
 
-  const herramienta = servidor ? (herramientaPorServidor[servidor.id] ?? null) : null
+  // Al entrar a un servidor se ve primero su Resumen.
+  const herramienta: VistaServidor | null = servidor
+    ? herramientaPorServidor[servidor.id] === undefined
+      ? 'resumen'
+      : herramientaPorServidor[servidor.id]
+    : null
 
   const permisos = useMemo(() => calcularPermisos(servidor, yo?.id, miembros, roles), [servidor, yo, miembros, roles])
 
@@ -172,7 +178,7 @@ function AppShellInterno() {
     setMenuAbierto(false)
   }
 
-  function seleccionarHerramienta(h: Herramienta) {
+  function seleccionarHerramienta(h: VistaServidor) {
     if (!servidor) return
     setHerramientaPorServidor((prev) => ({ ...prev, [servidor.id]: h }))
     setMenuAbierto(false)
@@ -294,36 +300,17 @@ function AppShellInterno() {
     </button>
   )
 
-  /** Contenido del panel de la izquierda: Inicio o los canales del servidor. */
+  /** Panel de la izquierda: solo en Inicio (amigos, mensajes directos, publicaciones). */
   const lateral = (
     <div className="flex h-full min-h-0 flex-col gap-4 p-3">
-      {mostrarInicio ? (
-        <InicioSidebar
-          onWrapped={() => setWrappedAbierto(true)}
-          seleccion={seleccionInicio}
-          onSeleccionar={(s) => {
-            setSeleccionInicio(s)
-            setMenuAbierto(false)
-          }}
-        />
-      ) : servidor ? (
-        <ChannelList
-          servidor={servidor}
-          canales={canales}
-          cargando={cargandoCanales}
-          seleccionadoId={canal?.id}
-          herramienta={herramienta}
-          permisos={permisos}
-          onSeleccionar={seleccionarCanal}
-          onHerramienta={seleccionarHerramienta}
-          onCrearCanal={() => setModal('crearCanal')}
-          onInvitar={() => setModal('invitar')}
-          onConfigurar={() => setModal('configuracion')}
-        />
-      ) : (
-        <div className="flex-1" />
-      )}
-      <VozBar voz={voz} />
+      <InicioSidebar
+        onWrapped={() => setWrappedAbierto(true)}
+        seleccion={seleccionInicio}
+        onSeleccionar={(s) => {
+          setSeleccionInicio(s)
+          setMenuAbierto(false)
+        }}
+      />
     </div>
   )
 
@@ -373,53 +360,45 @@ function AppShellInterno() {
       contenido = <AmigosView onMensaje={abrirDirecto} onVerPerfil={setPerfilAbierto} />
     }
   } else {
-    encabezado = (
-      <>
-        {herramienta ? (
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            <IconoHerramienta herramienta={herramienta} />
-            <span className="hidden truncate text-sm text-muted-foreground sm:inline">· {servidor?.nombre}</span>
-          </div>
-        ) : canal ? (
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            {canal.tipo === 'voz' ? (
-              <Volume2 className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-            ) : (
-              <Hash className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-            )}
-            <h1 className="truncate font-display text-[17px] font-bold">{canal.nombre}</h1>
-            {canal.solo_lectura && (
-              <span className="flex shrink-0 items-center gap-1 rounded-md bg-elevated px-1.5 py-0.5 text-[11px] text-muted-foreground">
-                <Lock className="size-3" aria-hidden />
-                Solo lectura
-              </span>
-            )}
-            <span className="hidden truncate text-sm text-muted-foreground sm:inline">· {servidor?.nombre}</span>
-          </div>
-        ) : (
-          <h1 className="flex-1 truncate font-display text-[17px] font-bold">{servidor?.nombre ?? 'Kort'}</h1>
-        )}
-        {servidor && (
-          <div className="flex shrink-0 items-center gap-0.5">
+    encabezado = servidor ? (
+      <BarraServidor
+        servidor={servidor}
+        canales={canales}
+        canalId={canal?.id}
+        vista={herramienta}
+        permisos={permisos}
+        cantidadMiembros={miembros?.length}
+        onCanal={seleccionarCanal}
+        onVista={seleccionarHerramienta}
+        onCrearCanal={() => setModal('crearCanal')}
+        onInvitar={() => setModal('invitar')}
+        onConfigurar={() => setModal('configuracion')}
+        acciones={
+          <>
             {canal?.tipo === 'texto' && !herramienta && (
               <BotonPanel icono={Pin} etiqueta="Fijados" activo={panel === 'fijados'} onClick={() => alternarPanel('fijados')} />
             )}
             <BotonPanel icono={Search} etiqueta="Buscar" activo={panel === 'buscar'} onClick={() => alternarPanel('buscar')} />
-            <BotonPanel
-              icono={Images}
-              etiqueta="Multimedia"
-              activo={panel === 'multimedia'}
-              onClick={() => alternarPanel('multimedia')}
-            />
+            <BotonPanel icono={Images} etiqueta="Multimedia" activo={panel === 'multimedia'} onClick={() => alternarPanel('multimedia')} />
             <BotonPanel icono={Users} etiqueta="Miembros" activo={panel === 'miembros'} onClick={() => alternarPanel('miembros')} />
-          </div>
-        )}
-      </>
-    )
+          </>
+        }
+      />
+    ) : null
     contenido = sinServidores ? (
       <EmptyState onCrear={() => setModal('crearServidor')} onUnirme={() => setModal('unirme')} />
     ) : herramienta && servidor && yo ? (
-      herramienta === 'publicaciones' ? (
+      herramienta === 'resumen' ? (
+        <ResumenServidor
+          key={servidor.id}
+          servidor={servidor}
+          canales={canales ?? []}
+          yo={yo}
+          onVista={seleccionarHerramienta}
+          onCanal={seleccionarCanal}
+          onVerPerfil={setPerfilAbierto}
+        />
+      ) : herramienta === 'publicaciones' ? (
         <div className="scrollbar-thin flex-1 overflow-y-auto">
           <div className="mx-auto max-w-2xl px-4 py-6">
             <PublicacionesLista
@@ -527,19 +506,30 @@ function AppShellInterno() {
                 onReordenar={reordenarServidores}
               />
             </div>
-            <div className="min-h-0 flex-1">{lateral}</div>
+            {mostrarInicio && <div className="min-h-0 flex-1">{lateral}</div>}
           </aside>
         </div>
       )}
 
+      {/* Mientras estás en una llamada (aunque mires otra cosa) */}
+      <div className="fixed bottom-5 left-5 z-30 w-72 max-w-[calc(100vw-2.5rem)] [&>*]:shadow-[var(--sombra)] [&>*]:backdrop-blur">
+        <VozBar voz={voz} />
+      </div>
+
       {/* Paneles flotantes */}
       <div className="flex min-h-0 flex-1 gap-3 px-3 pb-3">
-        <aside className="panel hidden w-72 shrink-0 flex-col overflow-hidden md:flex" aria-label="Navegación">
-          {lateral}
-        </aside>
+        {mostrarInicio && (
+          <aside className="panel hidden w-72 shrink-0 flex-col overflow-hidden md:flex" aria-label="Inicio">
+            {lateral}
+          </aside>
+        )}
 
         <main className="panel flex min-w-0 flex-1 flex-col overflow-hidden">
-          <div className="flex h-14 shrink-0 items-center gap-3 border-b border-border px-4">{encabezado}</div>
+          {mostrarInicio ? (
+            <div className="flex h-14 shrink-0 items-center gap-3 border-b border-border px-4">{encabezado}</div>
+          ) : (
+            encabezado
+          )}
           <div className="flex min-h-0 flex-1 flex-col">{contenido}</div>
         </main>
 
@@ -619,16 +609,6 @@ function AppShellInterno() {
         }
       />
     </div>
-  )
-}
-
-function IconoHerramienta({ herramienta }: { herramienta: Herramienta }) {
-  const h = HERRAMIENTAS.find((x) => x.id === herramienta)!
-  return (
-    <>
-      <h.Icono className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-      <h1 className="truncate font-display text-[17px] font-bold">{h.nombre}</h1>
-    </>
   )
 }
 

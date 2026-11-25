@@ -134,7 +134,7 @@ function armarPlacas(w: Wrapped): { clave: string; contenido: React.ReactNode }[
       contenido: (
         <>
           <Titulo>Tu lugar en el mundo</Titulo>
-          <p className="text-5xl font-black text-white">#{w.canal_favorito.canal}</p>
+          <p className="text-5xl font-black text-white">{w.canal_favorito.canal}</p>
           <p className="text-white/80">
             en {w.canal_favorito.servidor}, con {plural(w.canal_favorito.cantidad, 'mensaje tuyo', 'mensajes tuyos')}.
           </p>
@@ -304,7 +304,7 @@ export function WrappedHistoria({ anio, onCerrar }: { anio: number; onCerrar: ()
     const texto = [
       `Mi Kort Wrapped ${data.anio} ✨`,
       `💬 ${n(data.total_mensajes)} mensajes`,
-      data.canal_favorito && `📍 Canal favorito: #${data.canal_favorito.canal}`,
+      data.canal_favorito && `📍 Canal favorito: ${data.canal_favorito.canal}`,
       `🔥 Racha: ${data.racha_mas_larga} días`,
       data.emojis_favoritos[0] && `😀 Emoji del año: ${data.emojis_favoritos[0].nombre}`,
       `${data.personalidad.emoji} Soy "${data.personalidad.titulo}"`,

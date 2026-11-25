@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Hash, Pencil, Trash2, Volume2 } from 'lucide-react'
+import { AudioLines, MessageCircle, Pencil, Trash2 } from 'lucide-react'
 import { actualizarCanal, borrarCanal, mensajeDeError, type Canal } from '@/lib/api'
 import { useToast } from '../toast-provider'
 import { Boton, Input } from '../ui'
@@ -25,7 +25,7 @@ function FilaCanal({ canal, onActualizar }: { canal: Canal; onActualizar: () => 
   const [editando, setEditando] = useState(false)
   const [nombre, setNombre] = useState(canal.nombre)
   const [borrando, setBorrando] = useState(false)
-  const Icono = canal.tipo === 'voz' ? Volume2 : Hash
+  const Icono = canal.tipo === 'voz' ? AudioLines : MessageCircle
 
   async function guardar(cambios: { nombre?: string; solo_lectura?: boolean }) {
     try {
@@ -93,7 +93,7 @@ function FilaCanal({ canal, onActualizar }: { canal: Canal; onActualizar: () => 
 
       <Confirmar
         abierto={borrando}
-        titulo={`¿Borrar ${canal.tipo === 'texto' ? '#' : ''}${canal.nombre}?`}
+        titulo={`¿Borrar ${canal.tipo === 'texto' ? 'el canal' : 'la sala'} ${canal.nombre}?`}
         descripcion="Se borran también todos sus mensajes."
         textoBoton="Borrar canal"
         onCerrar={() => setBorrando(false)}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { BarChart3, Hash, Settings, Shield, Ticket, Users, X } from 'lucide-react'
+import { BarChart3, MessageCircle, Settings, Shield, Ticket, Users, X } from 'lucide-react'
 import type { Canal, Miembro, Rol, Servidor } from '@/lib/api'
 import type { Permisos } from '@/lib/kort'
 import { cn } from '@/lib/utils'
@@ -43,7 +43,7 @@ export function ConfiguracionServidor({
 }) {
   const pestanias: { id: Pestania; etiqueta: string; Icono: typeof Settings; visible: boolean }[] = [
     { id: 'general', etiqueta: 'General', Icono: Settings, visible: true },
-    { id: 'canales', etiqueta: 'Canales', Icono: Hash, visible: permisos.esModerador },
+    { id: 'canales', etiqueta: 'Canales', Icono: MessageCircle, visible: permisos.esModerador },
     { id: 'roles', etiqueta: 'Roles', Icono: Shield, visible: permisos.esDuenio },
     { id: 'miembros', etiqueta: 'Miembros', Icono: Users, visible: permisos.esModerador },
     { id: 'invitaciones', etiqueta: 'Invitaciones', Icono: Ticket, visible: permisos.puedeInvitar },

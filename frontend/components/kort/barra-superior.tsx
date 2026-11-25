@@ -46,7 +46,7 @@ export function PestaniasServidores({
   }
 
   return (
-    <nav aria-label="Tus servidores" className="scrollbar-thin flex min-w-0 items-center gap-1.5 overflow-x-auto py-1">
+    <nav aria-label="Tus servidores" className="flex min-w-0 items-center gap-1.5 overflow-x-auto py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {servidores.map((s, i) => {
         const activo = s.id === seleccionadoId
         return (

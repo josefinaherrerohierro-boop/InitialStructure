@@ -65,7 +65,7 @@ function TarjetaMensaje({ m, canal, onIr }: { m: Mensaje; canal?: string; onIr?:
         <span className="min-w-0 flex-1 truncate text-sm font-medium">{nombreVisible(m)}</span>
         <span className="shrink-0 text-[11px] text-muted-foreground">{horaMensaje(m.fecha)}</span>
       </span>
-      {canal && <span className="text-[11px] text-muted-foreground">#{canal}</span>}
+      {canal && <span className="text-[11px] text-muted-foreground">en {canal}</span>}
       {m.contenido && (
         <span className="line-clamp-4 whitespace-pre-wrap break-words text-sm text-foreground/90">
           {m.encuesta ? `📊 ${m.contenido}` : m.contenido}
@@ -81,7 +81,7 @@ function TarjetaMensaje({ m, canal, onIr }: { m: Mensaje; canal?: string; onIr?:
 export function FijadosPanel({ canal, onCerrar }: { canal: Canal; onCerrar: () => void }) {
   const { data, isLoading } = useSWR(['fijados', canal.id], () => getFijados(canal.id), { refreshInterval: 10000 })
   return (
-    <PanelLateral titulo={`Fijados en #${canal.nombre}`} onCerrar={onCerrar}>
+    <PanelLateral titulo={`Fijados en ${canal.nombre}`} onCerrar={onCerrar}>
       {isLoading && !data ? (
         <p className="p-2 text-sm text-muted-foreground">Cargando…</p>
       ) : data && data.length > 0 ? (
@@ -147,7 +147,7 @@ export function BusquedaPanel({
             .filter((c) => c.tipo === 'texto')
             .map((c) => (
               <option key={c.id} value={c.id}>
-                #{c.nombre}
+                {c.nombre}
               </option>
             ))}
         </select>

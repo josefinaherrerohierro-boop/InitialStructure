@@ -1,7 +1,7 @@
 'use client'
 
 import useSWR from 'swr'
-import { Hash, Users } from 'lucide-react'
+import { MessageCircle, Users } from 'lucide-react'
 import { getCanalesInactivos, getCrecimiento, getTopUsuarios, type CantidadPorMes } from '@/lib/api'
 import { horaMensaje } from '@/lib/kort'
 import { Avatar } from '../ui'
@@ -85,7 +85,7 @@ export function EstadisticasTab({ servidorId }: { servidorId: number }) {
           <ul className="flex flex-col divide-y divide-border">
             {inactivos.map((c) => (
               <li key={c.canal_id} className="flex items-center gap-2 py-2.5 text-sm">
-                <Hash className="size-4 text-muted-foreground" aria-hidden />
+                <MessageCircle className="size-4 text-muted-foreground" aria-hidden />
                 <span className="flex-1 font-medium">{c.nombre}</span>
                 <span className="text-muted-foreground">
                   {c.ultimo_mensaje ? `Último mensaje: ${horaMensaje(c.ultimo_mensaje)}` : 'Nunca tuvo mensajes'}

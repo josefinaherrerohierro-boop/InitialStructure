@@ -261,10 +261,10 @@ export function ChatPanel({
       claveSWR={['mensajes', canal.id]}
       cargar={(o) => getMensajes(canal.id, o)}
       yo={yo}
-      destino={`#${canal.nombre}`}
+      destino={canal.nombre}
       encabezadoVacio={
         <>
-          <p className="text-lg font-semibold">Este es el comienzo de #{canal.nombre}</p>
+          <p className="font-display text-2xl font-extrabold">Así empieza {canal.nombre}</p>
           <p className="text-sm text-muted-foreground">
             {puedeEscribir ? 'Todavía no hay mensajes. ¡Rompé el hielo!' : 'Todavía no hay mensajes.'}
           </p>

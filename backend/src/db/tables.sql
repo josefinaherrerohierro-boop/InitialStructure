@@ -298,10 +298,12 @@ CREATE TABLE IF NOT EXISTS publicaciones (
     servidor_id  INTEGER      REFERENCES servidores(id) ON DELETE CASCADE,
     contenido    TEXT         NOT NULL DEFAULT '',
     imagen_url   VARCHAR(255),
+    -- Flyer: invitación a un servidor para que cualquiera se una desde la publicación.
+    invitacion_id INTEGER     REFERENCES invitaciones(id) ON DELETE SET NULL,
     fecha        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT chk_publicacion_valida CHECK (
         char_length(contenido) <= 2000
-        AND (char_length(btrim(contenido)) > 0 OR imagen_url IS NOT NULL)
+        AND (char_length(btrim(contenido)) > 0 OR imagen_url IS NOT NULL OR invitacion_id IS NOT NULL)
     )
 );
 
@@ -327,9 +329,12 @@ CREATE TABLE IF NOT EXISTS estados (
     contenido    VARCHAR(200) NOT NULL DEFAULT '',
     imagen_url   VARCHAR(255),
     color_fondo  VARCHAR(7)   NOT NULL DEFAULT '#ff6b5b',
+    invitacion_id INTEGER     REFERENCES invitaciones(id) ON DELETE SET NULL,  -- flyer
     fecha        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     vence        TIMESTAMP    NOT NULL,
-    CONSTRAINT chk_estado_valido CHECK (char_length(btrim(contenido)) > 0 OR imagen_url IS NOT NULL)
+    CONSTRAINT chk_estado_valido CHECK (
+        char_length(btrim(contenido)) > 0 OR imagen_url IS NOT NULL OR invitacion_id IS NOT NULL
+    )
 );
 
 

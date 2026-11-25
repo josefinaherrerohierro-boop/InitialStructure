@@ -14,6 +14,8 @@ class Publicacion(Base):
     servidor_id = Column(Integer, ForeignKey("servidores.id", ondelete="CASCADE"), nullable=True)
     contenido = Column(Text, nullable=False, default="")
     imagen_url = Column(String(255), nullable=True)
+    # Flyer: invitación a un servidor (cualquiera puede unirse desde la publicación).
+    invitacion_id = Column(Integer, ForeignKey("invitaciones.id", ondelete="SET NULL"), nullable=True)
     fecha = Column(DateTime, nullable=False, server_default=func.now())
 
 

@@ -16,5 +16,6 @@ class Estado(Base):
     contenido = Column(String(200), nullable=False, default="")
     imagen_url = Column(String(255), nullable=True)
     color_fondo = Column(String(7), nullable=False, default="#ff6b5b")
+    invitacion_id = Column(Integer, ForeignKey("invitaciones.id", ondelete="SET NULL"), nullable=True)  # flyer
     fecha = Column(DateTime, nullable=False, server_default=func.now())
     vence = Column(DateTime, nullable=False)

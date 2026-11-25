@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react'
 import useSWRInfinite from 'swr/infinite'
-import { Heart, ImagePlus, MessageCircle, Send, Trash2, X } from 'lucide-react'
+import { Heart, ImagePlus, Megaphone, MessageCircle, Send, Trash2, X } from 'lucide-react'
 import useSWR from 'swr'
 import {
   alternarMeGusta,
@@ -19,6 +19,7 @@ import {
 } from '@/lib/api'
 import { horaMensaje } from '@/lib/kort'
 import { cn } from '@/lib/utils'
+import { ElegirServidorFlyer, TarjetaFlyer } from './flyer'
 import { TextoConLinks } from './texto-enriquecido'
 import { useToast } from './toast-provider'
 import { Avatar, Boton } from './ui'
@@ -40,16 +41,27 @@ function NuevaPublicacion({
   const [imagen, setImagen] = useState<string | null>(null)
   const [subiendo, setSubiendo] = useState(false)
   const [publicando, setPublicando] = useState(false)
+  const [conFlyer, setConFlyer] = useState(false)
+  const [promocionar, setPromocionar] = useState<number | null>(null)
   const input = useRef<HTMLInputElement>(null)
 
   async function publicar(e: React.FormEvent) {
     e.preventDefault()
-    if (!texto.trim() && !imagen) return
+    if (!texto.trim() && !imagen && !promocionar) return
     setPublicando(true)
     try {
-      onCreada(await crearPublicacion({ contenido: texto.trim(), imagen_url: imagen, servidor_id: servidorId ?? null }))
+      onCreada(
+        await crearPublicacion({
+          contenido: texto.trim(),
+          imagen_url: imagen,
+          servidor_id: servidorId ?? null,
+          promocionar_servidor_id: promocionar,
+        }),
+      )
       setTexto('')
       setImagen(null)
+      setPromocionar(null)
+      setConFlyer(false)
     } catch (err) {
       toast.error(mensajeDeError(err))
     } finally {
@@ -70,7 +82,7 @@ function NuevaPublicacion({
           maxLength={2000}
           rows={Math.min(6, Math.max(2, texto.split('\n').length))}
           onChange={(e) => setTexto(e.target.value)}
-          placeholder={servidorId ? 'Compartí algo con el servidor…' : '¿Qué estás pensando?'}
+          placeholder={servidorId ? 'Compartí algo con el servidor…' : '¿Qué estás pensando? Lo ve todo Kort.'}
           className="w-full resize-none bg-transparent text-sm leading-relaxed outline-none placeholder:text-muted-foreground/70"
         />
         {imagen && (
@@ -87,6 +99,7 @@ function NuevaPublicacion({
             </button>
           </div>
         )}
+        {conFlyer && <ElegirServidorFlyer yo={yo} valor={promocionar} onCambiar={setPromocionar} />}
         <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
           <input
             ref={input}
@@ -118,7 +131,25 @@ function NuevaPublicacion({
             <ImagePlus className={cn('size-4', subiendo && 'animate-pulse')} aria-hidden />
             {subiendo ? 'Subiendo…' : 'Imagen'}
           </button>
-          <Boton type="submit" cargando={publicando} disabled={!texto.trim() && !imagen} className="h-9">
+          {!servidorId && (
+            <button
+              type="button"
+              onClick={() => {
+                setConFlyer((v) => !v)
+                setPromocionar(null)
+              }}
+              aria-pressed={conFlyer}
+              className={cn(
+                'flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm hover:bg-elevated',
+                conFlyer ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <Megaphone className="size-4" aria-hidden />
+              Promocionar servidor
+            </button>
+          )}
+          <span className="flex-1" />
+          <Boton type="submit" cargando={publicando} disabled={!texto.trim() && !imagen && !promocionar} className="h-9">
             Publicar
           </Boton>
         </div>
@@ -267,6 +298,7 @@ function TarjetaPublicacion({
           <TextoConLinks texto={p.contenido} />
         </p>
       )}
+      {p.flyer && <TarjetaFlyer flyer={p.flyer} />}
       {p.imagen_url && (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={urlArchivo(p.imagen_url)} alt="" loading="lazy" className="max-h-[28rem] w-full rounded-xl border border-border object-contain bg-background" />

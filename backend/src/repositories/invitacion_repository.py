@@ -22,6 +22,9 @@ class InvitacionRepository:
         self.db.flush()
         return invitacion
 
+    def find_by_id(self, invitacion_id: int) -> Invitacion | None:
+        return self.db.query(Invitacion).filter(Invitacion.id == invitacion_id).first()
+
     def find_by_codigo(self, codigo: str) -> Invitacion | None:
         return self.db.query(Invitacion).filter(Invitacion.codigo == codigo).first()
 

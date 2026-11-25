@@ -6,8 +6,10 @@ from sqlalchemy.orm import Session
 from src.db.models.estado_model import DURACION_ESTADO_HORAS
 from src.db.models.publicacion_model import Publicacion
 from src.db.models.usuario_model import Usuario
+from src.dtos.invitacion_dto import CreateInvitacionDTO
 from src.dtos.publicacion_dto import (
     ComentarioDTO,
+    FlyerDTO,
     CreateEstadoDTO,
     CreatePublicacionDTO,
     EstadoDTO,
@@ -16,24 +18,32 @@ from src.dtos.publicacion_dto import (
 )
 from src.mappers.social_mapper import to_usuario_resumen
 from src.repositories.amistad_repository import AmistadRepository
+from src.repositories.invitacion_repository import InvitacionRepository
+from src.repositories.miembro_repository import MiembroRepository
 from src.repositories.publicacion_repository import PublicacionRepository
 from src.repositories.usuario_repository import UsuarioRepository
 from src.services.archivo_service import ArchivoService
+from src.services.invitacion_service import InvitacionService
 from src.services.permisos_service import PermisosService
 from src.utils.errors import ForbiddenError, NotFoundError, UnprocessableError
 from src.utils.fechas import ahora
 
 POR_PAGINA = 20
 MAXIMO_ESTADOS_ACTIVOS = 10
+# Invitación que se crea para un flyer: muchos usos y un mes de duración.
+USOS_FLYER = 1000
+DIAS_FLYER = 30
 
 
 class PublicacionService:
     """Publicaciones (del perfil o de un servidor), likes, comentarios y estados.
 
-    - Publicación de perfil: la ve cualquier usuario en el perfil; en el feed
-      aparecen las tuyas y las de tus amigos.
+    - Publicación de perfil (afuera de los servidores): es pública, la ve
+      cualquier cuenta en el feed, sean amigos o no.
     - Publicación de servidor: solo la ven los miembros de ese servidor.
-    - Estados: duran 24 horas y los ven tus amigos.
+    - Estados: duran 24 horas y son públicos.
+    - Flyers: una publicación de perfil o un estado puede promocionar un
+      servidor; trae una invitación para que cualquiera se una.
     """
 
     def __init__(self, db: Session):
@@ -41,12 +51,14 @@ class PublicacionService:
         self.publicaciones = PublicacionRepository(db)
         self.usuarios = UsuarioRepository(db)
         self.amistades = AmistadRepository(db)
+        self.invitaciones = InvitacionRepository(db)
+        self.miembros = MiembroRepository(db)
         self.permisos = PermisosService(db)
 
     # ---------- Listados ----------
     def feed(self, actual_id: int, antes_de: int | None = None) -> list[PublicacionDTO]:
-        autores = [actual_id, *self.amistades.ids_de_amigos(actual_id)]
-        return self._armar(self.publicaciones.de_perfiles(autores, antes_de, POR_PAGINA), actual_id)
+        """Todas las publicaciones de afuera de los servidores, de cualquier cuenta."""
+        return self._armar(self.publicaciones.publicas(antes_de, POR_PAGINA), actual_id)
 
     def de_perfil(self, usuario_id: int, actual_id: int, antes_de: int | None = None) -> list[PublicacionDTO]:
         if self.usuarios.find_by_id(usuario_id) is None:
@@ -62,13 +74,16 @@ class PublicacionService:
     def crear(self, dto: CreatePublicacionDTO, actual_id: int) -> PublicacionDTO:
         imagen = ArchivoService.validar_imagen(dto.imagen_url)
         contenido = dto.contenido.strip()
-        if not contenido and not imagen:
-            raise UnprocessableError("La publicación tiene que tener texto o una imagen")
         if dto.servidor_id is not None:
             servidor = self.permisos.obtener_servidor(dto.servidor_id)
             if not self.permisos.puede_escribir(servidor.id, actual_id):
                 raise ForbiddenError("No tenés permiso para publicar en este servidor")
-        p = self.publicaciones.create(actual_id, contenido, imagen, dto.servidor_id)
+            if dto.promocionar_servidor_id is not None:
+                raise UnprocessableError("Los flyers se publican afuera de los servidores, en tu perfil")
+        invitacion_id = self._crear_invitacion_flyer(dto.promocionar_servidor_id, actual_id)
+        if not contenido and not imagen and invitacion_id is None:
+            raise UnprocessableError("La publicación tiene que tener texto, una imagen o un servidor para promocionar")
+        p = self.publicaciones.create(actual_id, contenido, imagen, dto.servidor_id, invitacion_id)
         self.db.commit()
         return self._armar([(p, self.usuarios.find_by_id(actual_id))], actual_id)[0]
 
@@ -123,31 +138,40 @@ class PublicacionService:
 
     # ---------- Estados ----------
     def estados(self, actual_id: int) -> list[EstadosDeUsuarioDTO]:
-        """Estados activos míos y de mis amigos. Los míos primero."""
-        ids = [actual_id, *self.amistades.ids_de_amigos(actual_id)]
+        """Estados activos de todo Kort (son públicos). Primero los míos, después
+        los de mis amigos y después los del resto, por lo más reciente."""
+        amigos = set(self.amistades.ids_de_amigos(actual_id))
         por_usuario: dict[int, list] = {}
-        for e in self.publicaciones.estados_activos(ids, ahora()):
-            por_usuario.setdefault(e.usuario_id, []).append(EstadoDTO.model_validate(e))
+        for e in self.publicaciones.todos_los_estados_activos(ahora()):
+            dto = EstadoDTO.model_validate(e)
+            dto.flyer = self._flyer(e.invitacion_id, actual_id)
+            por_usuario.setdefault(e.usuario_id, []).append(dto)
         resultado = [
             EstadosDeUsuarioDTO(usuario=to_usuario_resumen(self.usuarios.find_by_id(uid)), estados=estados)
             for uid, estados in por_usuario.items()
         ]
-        # Primero los míos; después, el que subió algo más recientemente.
-        return sorted(resultado, key=lambda g: (g.usuario.id != actual_id, -g.estados[-1].fecha.timestamp()))
+        return sorted(
+            resultado,
+            key=lambda g: (g.usuario.id != actual_id, g.usuario.id not in amigos, -g.estados[-1].fecha.timestamp()),
+        )
 
     def crear_estado(self, dto: CreateEstadoDTO, actual_id: int) -> EstadoDTO:
         imagen = ArchivoService.validar_imagen(dto.imagen_url)
         contenido = dto.contenido.strip()
-        if not contenido and not imagen:
-            raise UnprocessableError("El estado tiene que tener texto o una imagen")
         momento = ahora()
         if self.publicaciones.contar_activos(actual_id, momento) >= MAXIMO_ESTADOS_ACTIVOS:
             raise UnprocessableError(f"Podés tener hasta {MAXIMO_ESTADOS_ACTIVOS} estados a la vez")
+        invitacion_id = self._crear_invitacion_flyer(dto.promocionar_servidor_id, actual_id)
+        if not contenido and not imagen and invitacion_id is None:
+            raise UnprocessableError("El estado tiene que tener texto, una imagen o un servidor para promocionar")
         e = self.publicaciones.crear_estado(
-            actual_id, contenido[:200], imagen, dto.color_fondo.lower(), momento + timedelta(hours=DURACION_ESTADO_HORAS)
+            actual_id, contenido[:200], imagen, dto.color_fondo.lower(), momento + timedelta(hours=DURACION_ESTADO_HORAS),
+            invitacion_id,
         )
         self.db.commit()
-        return EstadoDTO.model_validate(e)
+        dto_estado = EstadoDTO.model_validate(e)
+        dto_estado.flyer = self._flyer(e.invitacion_id, actual_id)
+        return dto_estado
 
     def borrar_estado(self, estado_id: int, actual_id: int) -> None:
         e = self.publicaciones.find_estado(estado_id)
@@ -155,6 +179,36 @@ class PublicacionService:
             raise NotFoundError("Estado no encontrado")
         self.publicaciones.borrar_estado(e)
         self.db.commit()
+
+    # ---------- Flyers ----------
+    def _crear_invitacion_flyer(self, servidor_id: int | None, actual_id: int) -> int | None:
+        """Crea la invitación del flyer. Usa las mismas reglas que una invitación
+        común: solo el dueño o alguien con permiso de invitar."""
+        if servidor_id is None:
+            return None
+        invitacion = InvitacionService(self.db).create(
+            servidor_id,
+            CreateInvitacionDTO(usos_maximos=USOS_FLYER, fecha_vencimiento=ahora() + timedelta(days=DIAS_FLYER)),
+            actual_id,
+        )
+        return invitacion.id
+
+    def _flyer(self, invitacion_id: int | None, actual_id: int) -> FlyerDTO | None:
+        if invitacion_id is None:
+            return None
+        invitacion = self.invitaciones.find_by_id(invitacion_id)
+        servidor = self.permisos.servidores.find_by_id(invitacion.servidor_id) if invitacion else None
+        if invitacion is None or servidor is None:
+            return None
+        vencido = servidor.expira_en is not None and servidor.expira_en <= ahora()
+        return FlyerDTO(
+            codigo=invitacion.codigo,
+            servidor_id=servidor.id,
+            servidor_nombre=servidor.nombre,
+            miembros=self.miembros.contar_activos(servidor.id),
+            vigente=not vencido and invitacion.fecha_vencimiento > ahora() and invitacion.usos < invitacion.usos_maximos,
+            soy_miembro=self.permisos.es_miembro(servidor.id, actual_id),
+        )
 
     # ---------- Ayudas internas ----------
     def _buscar_visible(self, publicacion_id: int, actual_id: int) -> Publicacion:
@@ -181,6 +235,7 @@ class PublicacionService:
                 likes=likes.get(p.id, 0),
                 me_gusta=p.id in mios,
                 comentarios=comentarios.get(p.id, 0),
+                flyer=self._flyer(p.invitacion_id, actual_id),
             )
             for p, autor in filas
         ]

@@ -35,6 +35,13 @@ class MiembroRepository:
             .all()
         )
 
+    def contar_activos(self, servidor_id: int) -> int:
+        return (
+            self.db.query(Miembro)
+            .filter(Miembro.servidor_id == servidor_id, Miembro.baneado.is_(False))
+            .count()
+        )
+
     def apodos(self, servidor_id: int) -> dict[int, str]:
         """{usuario_id: apodo} de los miembros que tienen apodo en el servidor."""
         filas = (

@@ -15,8 +15,12 @@ class PublicacionRepository:
         self.db = db
 
     # ---------- Publicaciones ----------
-    def create(self, autor_id: int, contenido: str, imagen_url: str | None, servidor_id: int | None) -> Publicacion:
-        p = Publicacion(autor_id=autor_id, contenido=contenido, imagen_url=imagen_url, servidor_id=servidor_id)
+    def create(
+        self, autor_id: int, contenido: str, imagen_url: str | None, servidor_id: int | None, invitacion_id: int | None = None
+    ) -> Publicacion:
+        p = Publicacion(
+            autor_id=autor_id, contenido=contenido, imagen_url=imagen_url, servidor_id=servidor_id, invitacion_id=invitacion_id
+        )
         self.db.add(p)
         self.db.flush()
         return p
@@ -37,6 +41,10 @@ class PublicacionRepository:
         return self._listar(
             Publicacion.autor_id.in_(autor_ids) & Publicacion.servidor_id.is_(None), antes_de, limite
         )
+
+    def publicas(self, antes_de: int | None, limite: int):
+        """Todas las publicaciones de perfil (las de afuera de los servidores): las ve cualquiera."""
+        return self._listar(Publicacion.servidor_id.is_(None), antes_de, limite)
 
     def de_servidor(self, servidor_id: int, antes_de: int | None, limite: int):
         return self._listar(Publicacion.servidor_id == servidor_id, antes_de, limite)
@@ -117,11 +125,20 @@ class PublicacionRepository:
         self.db.flush()
 
     # ---------- Estados (duran 24 horas) ----------
-    def crear_estado(self, usuario_id: int, contenido: str, imagen_url: str | None, color: str, vence: datetime) -> Estado:
-        e = Estado(usuario_id=usuario_id, contenido=contenido, imagen_url=imagen_url, color_fondo=color, vence=vence)
+    def crear_estado(
+        self, usuario_id: int, contenido: str, imagen_url: str | None, color: str, vence: datetime, invitacion_id: int | None = None
+    ) -> Estado:
+        e = Estado(
+            usuario_id=usuario_id, contenido=contenido, imagen_url=imagen_url, color_fondo=color, vence=vence,
+            invitacion_id=invitacion_id,
+        )
         self.db.add(e)
         self.db.flush()
         return e
+
+    def todos_los_estados_activos(self, ahora: datetime) -> list[Estado]:
+        """Los estados de todo Kort que todavía no vencieron (son públicos)."""
+        return self.db.query(Estado).filter(Estado.vence > ahora).order_by(Estado.fecha).all()
 
     def estados_activos(self, usuario_ids: list[int], ahora: datetime) -> list[Estado]:
         if not usuario_ids:

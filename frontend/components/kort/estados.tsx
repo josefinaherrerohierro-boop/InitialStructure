@@ -15,6 +15,7 @@ import {
 } from '@/lib/api'
 import { horaMensaje } from '@/lib/kort'
 import { cn } from '@/lib/utils'
+import { ElegirServidorFlyer, TarjetaFlyer } from './flyer'
 import { Modal } from './modal'
 import { useToast } from './toast-provider'
 import { Avatar, Boton, ErrorFormulario } from './ui'
@@ -76,7 +77,7 @@ export function EstadosBarra({ yo }: { yo: Usuario }) {
       )}
 
       {grupos.length === 0 && (
-        <p className="self-center text-sm text-muted-foreground">Cuando tus amigos suban estados, los vas a ver acá.</p>
+        <p className="self-center text-sm text-muted-foreground">Cuando alguien suba un estado lo vas a ver acá.</p>
       )}
 
       {viendo !== null && grupos[viendo] && (
@@ -88,7 +89,7 @@ export function EstadosBarra({ yo }: { yo: Usuario }) {
           onBorrado={() => mutate()}
         />
       )}
-      <CrearEstadoModal abierto={creando} onCerrar={() => setCreando(false)} onCreado={() => mutate()} />
+      <CrearEstadoModal abierto={creando} yo={yo} onCerrar={() => setCreando(false)} onCreado={() => mutate()} />
     </section>
   )
 }
@@ -234,6 +235,11 @@ function VisorEstados({
             <img src={urlArchivo(estado.imagen_url)} alt="" className="max-h-full max-w-full object-contain" />
           ) : null}
         </div>
+        {estado.flyer && (
+          <div className="absolute inset-x-4 bottom-24 z-20">
+            <TarjetaFlyer flyer={estado.flyer} oscura />
+          </div>
+        )}
         {estado.contenido && (
           <p
             className={cn(
@@ -270,7 +276,18 @@ function VisorEstados({
   )
 }
 
-function CrearEstadoModal({ abierto, onCerrar, onCreado }: { abierto: boolean; onCerrar: () => void; onCreado: () => void }) {
+function CrearEstadoModal({
+  abierto,
+  yo,
+  onCerrar,
+  onCreado,
+}: {
+  abierto: boolean
+  yo: Usuario
+  onCerrar: () => void
+  onCreado: () => void
+}) {
+  const [promocionar, setPromocionar] = useState<number | null>(null)
   const toast = useToast()
   const [texto, setTexto] = useState('')
   const [color, setColor] = useState(COLORES[0])
@@ -283,6 +300,7 @@ function CrearEstadoModal({ abierto, onCerrar, onCreado }: { abierto: boolean; o
   function cerrar() {
     setTexto('')
     setImagen(null)
+    setPromocionar(null)
     setError(null)
     onCerrar()
   }
@@ -292,8 +310,8 @@ function CrearEstadoModal({ abierto, onCerrar, onCreado }: { abierto: boolean; o
     setError(null)
     setCargando(true)
     try {
-      await subirEstado({ contenido: texto.trim(), imagen_url: imagen, color_fondo: color })
-      toast.exito('Subiste un estado. Dura 24 horas.')
+      await subirEstado({ contenido: texto.trim(), imagen_url: imagen, color_fondo: color, promocionar_servidor_id: promocionar })
+      toast.exito('Subiste un estado. Lo ve todo Kort durante 24 horas.')
       onCreado()
       cerrar()
     } catch (err) {
@@ -304,7 +322,7 @@ function CrearEstadoModal({ abierto, onCerrar, onCreado }: { abierto: boolean; o
   }
 
   return (
-    <Modal abierto={abierto} onCerrar={cerrar} titulo="Subir un estado" descripcion="Lo ven tus amigos durante 24 horas.">
+    <Modal abierto={abierto} onCerrar={cerrar} titulo="Subir un estado" descripcion="Es público: lo ve todo Kort durante 24 horas.">
       <form onSubmit={publicar} className="flex flex-col gap-4">
         <div
           className="relative flex aspect-[4/5] max-h-80 items-center justify-center overflow-hidden rounded-2xl p-6"
@@ -373,12 +391,13 @@ function CrearEstadoModal({ abierto, onCerrar, onCreado }: { abierto: boolean; o
           </button>
         </div>
 
+        <ElegirServidorFlyer yo={yo} valor={promocionar} onCambiar={setPromocionar} />
         <ErrorFormulario mensaje={error} />
         <div className="flex justify-end gap-2">
           <Boton type="button" variante="fantasma" onClick={cerrar}>
             Cancelar
           </Boton>
-          <Boton type="submit" cargando={cargando} disabled={!texto.trim() && !imagen}>
+          <Boton type="submit" cargando={cargando} disabled={!texto.trim() && !imagen && !promocionar}>
             Publicar estado
           </Boton>
         </div>

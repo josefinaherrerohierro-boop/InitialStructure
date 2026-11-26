@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Crown, Hourglass, LogOut, Plus, Settings, Ticket } from 'lucide-react'
+import { Compass, Crown, Hourglass, LogOut, Plus, Settings, Ticket } from 'lucide-react'
 import type { Servidor, Usuario } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { Carril } from './carril'
@@ -104,7 +104,17 @@ export function PestaniasServidores({
 }
 
 /** Botones para crear un servidor o unirse con un código. */
-export function AccionesServidor({ onCrear, onUnirme }: { onCrear: () => void; onUnirme: () => void }) {
+export function AccionesServidor({
+  onCrear,
+  onUnirme,
+  onExplorar,
+  explorando = false,
+}: {
+  onCrear: () => void
+  onUnirme: () => void
+  onExplorar?: () => void
+  explorando?: boolean
+}) {
   const clase =
     'flex size-9 shrink-0 items-center justify-center rounded-full border border-dashed border-muted-foreground/40 text-muted-foreground transition-colors hover:border-primary hover:bg-primary/10 hover:text-primary'
   return (
@@ -115,6 +125,18 @@ export function AccionesServidor({ onCrear, onUnirme }: { onCrear: () => void; o
       <button type="button" onClick={onUnirme} className={clase} aria-label="Unirme con código" title="Unirme con código">
         <Ticket className="size-4" />
       </button>
+      {onExplorar && (
+        <button
+          type="button"
+          onClick={onExplorar}
+          aria-pressed={explorando}
+          className={cn(clase, explorando && 'border-solid border-primary bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground')}
+          aria-label="Explorar servidores públicos"
+          title="Explorar servidores públicos"
+        >
+          <Compass className="size-4" />
+        </button>
+      )}
     </div>
   )
 }

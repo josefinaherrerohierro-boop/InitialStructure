@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from src.db.models.miembro_model import Miembro
@@ -27,6 +27,28 @@ class ServidorRepository:
 
     def find_by_id(self, servidor_id: int) -> Servidor | None:
         return self.db.query(Servidor).filter(Servidor.id == servidor_id).first()
+
+    def explorar(self, texto: str, orden: str, ahora: datetime, limite: int, desplazamiento: int):
+        """Servidores públicos (no vencidos) con su cantidad de miembros.
+        Busca en el nombre y la descripción. orden: 'populares' o 'nuevos'."""
+        miembros = func.count(Miembro.usuario_id).label("miembros")
+        consulta = (
+            self.db.query(Servidor, miembros)
+            .outerjoin(Miembro, (Miembro.servidor_id == Servidor.id) & Miembro.baneado.is_(False))
+            .filter(Servidor.publico.is_(True))
+            .filter(or_(Servidor.expira_en.is_(None), Servidor.expira_en > ahora))
+            .group_by(Servidor.id)
+        )
+        if texto:
+            patron = "%" + texto.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+            consulta = consulta.filter(
+                or_(Servidor.nombre.ilike(patron, escape="\\"), Servidor.descripcion.ilike(patron, escape="\\"))
+            )
+        if orden == "nuevos":
+            consulta = consulta.order_by(Servidor.fecha_creacion.desc(), Servidor.id.desc())
+        else:
+            consulta = consulta.order_by(miembros.desc(), Servidor.fecha_creacion.desc())
+        return consulta.offset(desplazamiento).limit(limite).all()
 
     def list_vencidos(self, ahora: datetime) -> list[Servidor]:
         """Servidores temporales cuya fecha de vencimiento ya pasó."""

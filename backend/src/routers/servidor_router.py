@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from src.db.connection import get_db
 from src.db.models.usuario_model import Usuario
 from src.dtos.servidor_dto import (
     CreateServidorDTO,
+    ServidorPublicoDTO,
     ServidorResponseDTO,
     TransferirServidorDTO,
     UpdateServidorDTO,
@@ -31,6 +32,25 @@ def crear_servidor(
 ):
     dto = CreateServidorDTO(**payload.model_dump())
     return ServidorService(db).create(dto, actual.id)
+
+
+# Explorar servidores públicos: ?q=texto&orden=populares|nuevos&pagina=1
+# (va antes de /{servidor_id} para que "explorar" no se tome como un id)
+@router.get("/explorar", response_model=list[ServidorPublicoDTO])
+def explorar_servidores(
+    q: str = Query(default="", max_length=100),
+    orden: str = Query(default="populares"),
+    pagina: int = Query(default=1, ge=1, le=1000),
+    db: Session = Depends(get_db),
+    actual: Usuario = Depends(get_current_user),
+):
+    return ServidorService(db).explorar(q, orden, actual.id, pagina)
+
+
+# Unirse a un servidor público (sin invitación).
+@router.post("/{servidor_id}/unirse", response_model=ServidorResponseDTO)
+def unirse_a_servidor(servidor_id: int, db: Session = Depends(get_db), actual: Usuario = Depends(get_current_user)):
+    return ServidorService(db).unirse(servidor_id, actual.id)
 
 
 @router.get("/{servidor_id}", response_model=ServidorResponseDTO)

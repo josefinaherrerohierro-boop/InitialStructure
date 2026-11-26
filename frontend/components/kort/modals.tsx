@@ -33,6 +33,8 @@ export function CrearServidorModal({ abierto, onCerrar, onCreado }: BaseProps & 
   const [nombre, setNombre] = useState('')
   const [duracion, setDuracion] = useState<number | null>(null)
   const [clave, setClave] = useState('')
+  const [publico, setPublico] = useState(false)
+  const [descripcion, setDescripcion] = useState('')
   const [clave2, setClave2] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [cargando, setCargando] = useState(false)
@@ -43,6 +45,8 @@ export function CrearServidorModal({ abierto, onCerrar, onCreado }: BaseProps & 
     setDuracion(null)
     setClave('')
     setClave2('')
+    setPublico(false)
+    setDescripcion('')
     setError(null)
     onCerrar()
   }
@@ -60,7 +64,7 @@ export function CrearServidorModal({ abierto, onCerrar, onCreado }: BaseProps & 
     }
     setCargando(true)
     try {
-      const s = await crearServidor(nombre.trim(), clave, duracion)
+      const s = await crearServidor({ nombre: nombre.trim(), clave_borrado: clave, duracion_horas: duracion, publico, descripcion })
       toast.exito(`Listo, creaste "${s.nombre}".`)
       onCreado(s)
       cerrar()
@@ -86,6 +90,42 @@ export function CrearServidorModal({ abierto, onCerrar, onCreado }: BaseProps & 
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
             placeholder="Ej.: Club de ajedrez"
+          />
+        </Campo>
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1.5 text-sm font-medium">¿Quién puede entrar?</legend>
+          <div className="grid grid-cols-2 gap-2">
+            {(
+              [
+                [false, 'Privado', 'Solo con invitación'],
+                [true, 'Público', 'Aparece en Explorar'],
+              ] as const
+            ).map(([valor, titulo, detalle]) => (
+              <button
+                key={titulo}
+                type="button"
+                onClick={() => setPublico(valor)}
+                aria-pressed={publico === valor}
+                className={cn(
+                  'flex flex-col items-start rounded-xl border-2 px-3 py-2 text-left transition-colors',
+                  publico === valor ? 'border-primary bg-primary/8' : 'border-border hover:bg-elevated',
+                )}
+              >
+                <span className="text-sm font-semibold">{titulo}</span>
+                <span className="text-xs text-muted-foreground">{detalle}</span>
+              </button>
+            ))}
+          </div>
+        </fieldset>
+        <Campo id="servidor-descripcion" etiqueta="Descripción (opcional)" ayuda={publico ? 'Ayuda a que te encuentren en Explorar.' : undefined}>
+          <textarea
+            id="servidor-descripcion"
+            rows={2}
+            maxLength={300}
+            value={descripcion}
+            onChange={(e) => setDescripcion(e.target.value)}
+            placeholder="¿De qué se trata tu comunidad?"
+            className="w-full resize-none rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none focus:border-primary/70 focus:ring-2 focus:ring-primary/20"
           />
         </Campo>
         <fieldset className="flex flex-col gap-2">

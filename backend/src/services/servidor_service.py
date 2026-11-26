@@ -1,11 +1,13 @@
 import logging
 from datetime import timedelta
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from src.db.models.rol_model import ROL_EVERYONE
 from src.dtos.servidor_dto import (
     CreateServidorDTO,
+    ServidorPublicoDTO,
     ServidorResponseDTO,
     TransferirServidorDTO,
     UpdateServidorDTO,
@@ -19,7 +21,7 @@ from src.repositories.servidor_repository import ServidorRepository
 from src.repositories.usuario_repository import UsuarioRepository
 from src.services.archivo_service import ArchivoService
 from src.services.permisos_service import PermisosService
-from src.utils.errors import ForbiddenError, UnprocessableError
+from src.utils.errors import ConflictError, ForbiddenError, UnprocessableError
 from src.utils.hash import hash_password, verify_password
 from src.utils.fechas import ahora
 
@@ -56,6 +58,8 @@ class ServidorService:
         try:
             servidor = self.servidores.create(nombre=nombre, duenio_id=usuario_id, expira_en=expira_en)
             servidor.clave_borrado_hash = hash_password(clave)
+            servidor.publico = dto.publico
+            servidor.descripcion = (dto.descripcion or "").strip()[:300]
             self.miembros.create(usuario_id=usuario_id, servidor_id=servidor.id)
             self.canales.create(servidor_id=servidor.id, nombre="general", tipo="texto")
             everyone = self.roles.create(
@@ -128,6 +132,10 @@ class ServidorService:
             cambios["expira_en"] = None
         elif dto.duracion_horas is not None:
             cambios["expira_en"] = ahora() + timedelta(hours=dto.duracion_horas)
+        if dto.publico is not None:
+            cambios["publico"] = dto.publico
+        if dto.descripcion is not None:
+            cambios["descripcion"] = dto.descripcion.strip()[:300]
         if dto.quitar_icono:
             cambios["icono_url"] = None
         elif dto.icono_url is not None:
@@ -149,6 +157,48 @@ class ServidorService:
         self.historial.cerrar_todos(servidor, "servidor_borrado")
         self.servidores.delete(servidor)
         self.db.commit()
+
+    # ---------- Explorar y unirse a servidores públicos ----------
+    def explorar(self, texto: str, orden: str, actual_id: int, pagina: int = 1) -> list[ServidorPublicoDTO]:
+        if orden not in ("populares", "nuevos"):
+            raise UnprocessableError("Orden inválido: usá 'populares' o 'nuevos'")
+        por_pagina = 24
+        filas = self.servidores.explorar(texto.strip()[:100], orden, ahora(), por_pagina, (max(pagina, 1) - 1) * por_pagina)
+        return [
+            ServidorPublicoDTO(
+                id=s.id,
+                nombre=s.nombre,
+                descripcion=s.descripcion,
+                icono_url=s.icono_url,
+                miembros=miembros,
+                fecha_creacion=s.fecha_creacion,
+                expira_en=s.expira_en,
+                soy_miembro=self.permisos.es_miembro(s.id, actual_id),
+            )
+            for s, miembros in filas
+        ]
+
+    def unirse(self, servidor_id: int, actual_id: int) -> ServidorResponseDTO:
+        """Unirse sin invitación: solo a servidores públicos (y si no te banearon)."""
+        servidor = self.permisos.obtener_servidor(servidor_id)
+        if not servidor.publico:
+            raise ForbiddenError("Este servidor es privado: solo se entra con una invitación")
+        miembro = self.miembros.find(actual_id, servidor.id)
+        if miembro is not None and miembro.baneado:
+            raise ForbiddenError("Estás baneado de este servidor")
+        if miembro is not None:
+            raise ConflictError("Ya sos miembro de este servidor")
+        everyone = self.roles.find_everyone(servidor.id)
+        try:
+            self.miembros.create(usuario_id=actual_id, servidor_id=servidor.id)
+            if everyone is not None:
+                self.roles.asignar(usuario_id=actual_id, rol_id=everyone.id)
+            self.historial.abrir(actual_id, servidor)
+            self.db.commit()
+        except IntegrityError:
+            self.db.rollback()
+            raise ConflictError("Ya sos miembro de este servidor")
+        return to_servidor_response(servidor)
 
     def cambiar_clave_borrado(self, servidor_id: int, password_cuenta: str, nueva: str, actual_id: int) -> ServidorResponseDTO:
         """Elegir o cambiar la contraseña de borrado. Se confirma con la contraseña

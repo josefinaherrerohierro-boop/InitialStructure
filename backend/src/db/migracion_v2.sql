@@ -325,3 +325,9 @@ CREATE TABLE IF NOT EXISTS directos_fijados (
 
 -- Contraseña para borrar el servidor ----------------------------------------
 ALTER TABLE servidores ADD COLUMN IF NOT EXISTS clave_borrado_hash VARCHAR(255);
+
+
+-- Servidores públicos (se pueden explorar) y privados ------------------------
+ALTER TABLE servidores ADD COLUMN IF NOT EXISTS publico     BOOLEAN      NOT NULL DEFAULT FALSE;
+ALTER TABLE servidores ADD COLUMN IF NOT EXISTS descripcion VARCHAR(300) NOT NULL DEFAULT '';
+CREATE INDEX IF NOT EXISTS idx_servidores_publicos ON servidores (publico) WHERE publico;

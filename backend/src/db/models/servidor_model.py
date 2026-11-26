@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.sql import func
 
 from src.db.connection import Base
@@ -18,3 +18,6 @@ class Servidor(Base):
     icono_url = Column(String(255), nullable=True)  # foto del servidor
     # Contraseña para borrarlo (bcrypt). Nunca sale del backend. NULL = se usa la de la cuenta del dueño.
     clave_borrado_hash = Column(String(255), nullable=True)
+    # Público: aparece en Explorar y cualquiera se une sin invitación. Privado: solo con invitación.
+    publico = Column(Boolean, nullable=False, default=False)
+    descripcion = Column(String(300), nullable=False, default="")

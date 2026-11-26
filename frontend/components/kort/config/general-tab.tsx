@@ -15,6 +15,7 @@ import { useToast } from '../toast-provider'
 import { Boton, Campo, ErrorFormulario, Input } from '../ui'
 import { Confirmar, Seccion } from './confirmar'
 import { ClaveBorrado } from './clave-borrado'
+import { VisibilidadServidor } from './visibilidad-servidor'
 import { FotoServidor } from './foto-servidor'
 import { MiFotoServidor } from './mi-foto-servidor'
 import { useCambiosPendientes } from '../cambios-pendientes'
@@ -76,6 +77,7 @@ export function GeneralTab({
   return (
     <div className="flex flex-col gap-6">
       {permisos.esDuenio && <FotoServidor servidor={servidor} onActualizar={onActualizar} />}
+      {permisos.esDuenio && <VisibilidadServidor servidor={servidor} onActualizar={onActualizar} />}
       {permisos.esDuenio && <ClaveBorrado servidor={servidor} onActualizar={onActualizar} />}
 
       {permisos.esDuenio && (

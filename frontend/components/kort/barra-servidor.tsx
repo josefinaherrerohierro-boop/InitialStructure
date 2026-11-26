@@ -1,6 +1,6 @@
 'use client'
 
-import { Columns3, Hourglass, Rows3, Settings, UserPlus } from 'lucide-react'
+import { Columns3, Globe, Hourglass, Lock, Rows3, Settings, UserPlus } from 'lucide-react'
 import type { Canal, Servidor } from '@/lib/api'
 import type { Permisos } from '@/lib/kort'
 import { SeccionesServidor, type Orientacion, type VistaServidor } from './secciones-servidor'
@@ -59,7 +59,12 @@ export function BarraServidor({
         <div className="min-w-0 flex-1">
           <h1 className="truncate font-display text-xl font-extrabold tracking-tight">{servidor.nombre}</h1>
           <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            {cantidadMiembros !== undefined && `${cantidadMiembros} ${cantidadMiembros === 1 ? 'miembro' : 'miembros'}`}
+            <span className="flex items-center gap-1" title={servidor.publico ? 'Aparece en Explorar' : 'Solo se entra con invitación'}>
+              {servidor.publico ? <Globe className="size-3" aria-hidden /> : <Lock className="size-3" aria-hidden />}
+              {servidor.publico ? 'Público' : 'Privado'}
+            </span>
+            ·
+            {cantidadMiembros !== undefined && ` ${cantidadMiembros} ${cantidadMiembros === 1 ? 'miembro' : 'miembros'}`}
             {servidor.expira_en && (
               <span className="flex items-center gap-1 text-primary">
                 <Hourglass className="size-3" aria-hidden />

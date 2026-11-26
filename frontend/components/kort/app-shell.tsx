@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import useSWR, { SWRConfig } from 'swr'
-import { AtSign, Images, Menu, Moon, Newspaper, Pin, Search, Sun, Users, X } from 'lucide-react'
+import { AtSign, Compass, Images, Menu, Moon, Newspaper, Pin, Search, Sun, Users, X } from 'lucide-react'
 import {
   ApiError,
   clearToken,
@@ -43,6 +43,7 @@ import { SeccionesServidor } from './secciones-servidor'
 import { ConfiguracionServidor } from './config/configuracion-servidor'
 import { ChatPanel, DirectoPanel } from './chat-panel'
 import { EmptyState } from './empty-state'
+import { ExplorarView } from './explorar'
 import { EstadosBarra } from './estados'
 import { AmigosView, InicioSidebar, usePendientesInicio, type SeleccionInicio } from './inicio'
 import { MembersPanel } from './members-panel'
@@ -89,6 +90,8 @@ function AppShellInterno() {
     return Number.isFinite(v) && v > 0 ? v : undefined
   })
   const [enInicio, setEnInicio] = useState(() => params.has('inicio'))
+  // Explorar servidores públicos (ocupa el centro, como Inicio).
+  const [enExplorar, setEnExplorar] = useState(false)
   const [seleccionInicio, setSeleccionInicio] = useState<SeleccionInicio>({ tipo: 'amigos' })
   const [canalPorServidor, setCanalPorServidor] = useState<Record<number, number>>({})
   // Qué se ve en el centro de cada servidor: el resumen, una herramienta o (null) un canal.
@@ -145,8 +148,8 @@ function AppShellInterno() {
   const mostrarInicio = enInicio
 
   const servidor = useMemo(
-    () => (mostrarInicio ? undefined : (servidores?.find((s) => s.id === servidorElegido) ?? servidores?.[0])),
-    [servidores, servidorElegido, mostrarInicio],
+    () => (mostrarInicio || enExplorar ? undefined : (servidores?.find((s) => s.id === servidorElegido) ?? servidores?.[0])),
+    [servidores, servidorElegido, mostrarInicio, enExplorar],
   )
 
   const { data: canales, isLoading: cargandoCanales, mutate: mutateCanales } = useSWR(
@@ -177,8 +180,15 @@ function AppShellInterno() {
     return canales.find((c) => c.id === elegido) ?? canales.find((c) => c.tipo === 'texto') ?? canales[0]
   }, [servidor, canales, canalPorServidor])
 
+  function abrirExplorar() {
+    setEnInicio(false)
+    setEnExplorar(true)
+    setMenuAbierto(false)
+  }
+
   function seleccionarServidor(id: number) {
     setEnInicio(false)
+    setEnExplorar(false)
     setServidorElegido(id)
     setMenuAbierto(false)
     router.replace(`/app?servidor=${id}`, { scroll: false })
@@ -186,6 +196,7 @@ function AppShellInterno() {
 
   function irAInicio(seleccion?: SeleccionInicio) {
     setEnInicio(true)
+    setEnExplorar(false)
     if (seleccion) setSeleccionInicio(seleccion)
     setMenuAbierto(false)
     router.replace('/app?inicio', { scroll: false })
@@ -338,7 +349,15 @@ function AppShellInterno() {
   let encabezado: React.ReactNode
   let contenido: React.ReactNode
 
-  if (mostrarInicio) {
+  if (enExplorar) {
+    encabezado = (
+      <div className="flex flex-1 items-center gap-2">
+        <Compass className="size-4 text-muted-foreground" aria-hidden />
+        <h1 className="font-display text-[17px] font-bold">Explorar servidores</h1>
+      </div>
+    )
+    contenido = <ExplorarView onUnido={agregarServidor} onIr={seleccionarServidor} />
+  } else if (mostrarInicio) {
     if (seleccionInicio.tipo === 'dm') {
       const u = seleccionInicio.usuario
       encabezado = (
@@ -496,7 +515,12 @@ function AppShellInterno() {
             onSeleccionar={seleccionarServidor}
             onReordenar={reordenarServidores}
           />
-          <AccionesServidor onCrear={() => setModal('crearServidor')} onUnirme={() => setModal('unirme')} />
+          <AccionesServidor
+            onCrear={() => setModal('crearServidor')}
+            onUnirme={() => setModal('unirme')}
+            onExplorar={abrirExplorar}
+            explorando={enExplorar}
+          />
         </div>
         <div className="flex-1 md:hidden" />
         <button
@@ -523,7 +547,12 @@ function AppShellInterno() {
           <aside className="panel absolute inset-y-3 left-3 flex w-80 max-w-[85vw] flex-col overflow-hidden" aria-label="Navegación">
             <div className="flex items-center justify-between gap-2 border-b border-border p-3">
               {botonInicio}
-              <AccionesServidor onCrear={() => setModal('crearServidor')} onUnirme={() => setModal('unirme')} />
+              <AccionesServidor
+            onCrear={() => setModal('crearServidor')}
+            onUnirme={() => setModal('unirme')}
+            onExplorar={abrirExplorar}
+            explorando={enExplorar}
+          />
               <button
                 type="button"
                 onClick={() => setMenuAbierto(false)}
@@ -580,7 +609,7 @@ function AppShellInterno() {
         )}
 
         <main className="panel flex min-w-0 flex-1 flex-col overflow-hidden">
-          {mostrarInicio ? (
+          {mostrarInicio || enExplorar ? (
             <div className="flex h-14 shrink-0 items-center gap-3 border-b border-border px-4">{encabezado}</div>
           ) : ampliada ? null : (
             encabezado

@@ -8,6 +8,8 @@ class CreateServidorSchema(BaseModel):
     duracion_horas: int | None = Field(default=None, ge=1, le=720)
     # Contraseña que se va a pedir para borrar el servidor (bcrypt usa hasta 72 bytes).
     clave_borrado: str = Field(min_length=4, max_length=72)
+    publico: bool = False
+    descripcion: str = Field(default="", max_length=300)
 
 
 class UpdateServidorSchema(BaseModel):
@@ -19,6 +21,8 @@ class UpdateServidorSchema(BaseModel):
     # Foto del servidor: una imagen subida con POST /archivos. quitar_icono = volver a las iniciales.
     icono_url: str | None = Field(default=None, max_length=255)
     quitar_icono: bool = False
+    publico: bool | None = None
+    descripcion: str | None = Field(default=None, max_length=300)
 
 
 class OrdenServidoresSchema(BaseModel):

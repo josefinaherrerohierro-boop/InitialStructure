@@ -69,8 +69,13 @@ CREATE TABLE servidores (
     icono_url       VARCHAR(255),
     -- Contraseña para borrar el servidor (se elige al crearlo; se guarda con
     -- bcrypt, nunca en texto plano). NULL = se pide la contraseña de la cuenta del dueño.
-    clave_borrado_hash VARCHAR(255)
+    clave_borrado_hash VARCHAR(255),
+    -- Público: aparece en "Explorar" y cualquiera puede unirse sin invitación.
+    -- Privado (por defecto): solo se entra con una invitación.
+    publico         BOOLEAN      NOT NULL DEFAULT FALSE,
+    descripcion     VARCHAR(300) NOT NULL DEFAULT ''
 );
+CREATE INDEX IF NOT EXISTS idx_servidores_publicos ON servidores (publico) WHERE publico;
 
 
 -- 3. Canales (HU3)

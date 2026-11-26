@@ -20,6 +20,9 @@ export type Servidor = {
   icono_url?: string | null
   /** true si se borra con su propia contraseña; false = con la de la cuenta del dueño. */
   tiene_clave_borrado?: boolean
+  /** Público: aparece en Explorar y cualquiera entra sin invitación. */
+  publico?: boolean
+  descripcion?: string
 }
 export type TipoCanal = 'texto' | 'voz'
 export type Canal = {
@@ -193,11 +196,31 @@ export const getServidoresDeUsuario = (usuarioId: number) =>
   request<Servidor[]>(`/usuarios/${usuarioId}/servidores`)
 
 // Servidores
-export const crearServidor = (nombre: string, claveBorrado: string, duracionHoras: number | null = null) =>
-  request<Servidor>('/servidores/', {
-    method: 'POST',
-    body: { nombre, clave_borrado: claveBorrado, duracion_horas: duracionHoras },
-  })
+export const crearServidor = (datos: {
+  nombre: string
+  clave_borrado: string
+  duracion_horas: number | null
+  publico: boolean
+  descripcion: string
+}) => request<Servidor>('/servidores/', { method: 'POST', body: datos })
+
+/** Un servidor público, como se ve en Explorar. */
+export type ServidorPublico = {
+  id: number
+  nombre: string
+  descripcion: string
+  icono_url: string | null
+  miembros: number
+  fecha_creacion: string
+  expira_en: string | null
+  soy_miembro: boolean
+}
+
+export const explorarServidores = (q: string, orden: 'populares' | 'nuevos', pagina = 1) =>
+  request<ServidorPublico[]>(`/servidores/explorar?${new URLSearchParams({ q, orden, pagina: String(pagina) }).toString()}`)
+
+/** Unirse a un servidor público (sin invitación). */
+export const unirseAServidor = (id: number) => request<Servidor>(`/servidores/${id}/unirse`, { method: 'POST' })
 
 /** Elegir o cambiar la contraseña para borrar el servidor (se confirma con la de la cuenta). */
 export const cambiarClaveBorrado = (id: number, passwordCuenta: string, nuevaClave: string) =>
@@ -268,7 +291,15 @@ export type Crecimiento = {
 // Servidor (solo el dueño)
 export const actualizarServidor = (
   id: number,
-  datos: { nombre?: string; duracion_horas?: number; hacer_permanente?: boolean; icono_url?: string; quitar_icono?: boolean },
+  datos: {
+    nombre?: string
+    duracion_horas?: number
+    hacer_permanente?: boolean
+    icono_url?: string
+    quitar_icono?: boolean
+    publico?: boolean
+    descripcion?: string
+  },
 ) =>
   request<Servidor>(`/servidores/${id}`, { method: 'PATCH', body: datos })
 

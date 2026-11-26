@@ -1,3 +1,4 @@
+import logging
 from datetime import timedelta
 
 from sqlalchemy.orm import Session
@@ -18,6 +19,9 @@ from src.repositories.servidor_repository import ServidorRepository
 from src.services.permisos_service import PermisosService
 from src.utils.errors import ForbiddenError, UnprocessableError
 from src.utils.fechas import ahora
+
+
+log = logging.getLogger("kort")
 
 
 class ServidorService:
@@ -85,14 +89,20 @@ class ServidorService:
 
     # ---------- Servidores temporales: borrar los vencidos ----------
     def borrar_vencidos(self) -> int:
-        """Lo llama una tarea de fondo cada minuto (ver app.py)."""
-        vencidos = self.servidores.list_vencidos(ahora())
-        for servidor in vencidos:
-            self.historial.cerrar_todos(servidor, "servidor_vencido")
-            self.servidores.delete(servidor)
-        if vencidos:
-            self.db.commit()
-        return len(vencidos)
+        """Lo llama una tarea de fondo cada minuto (ver app.py). Cada servidor se
+        borra en su propia transacción: si uno falla, no frena a los demás."""
+        borrados = 0
+        for servidor_id in [s.id for s in self.servidores.list_vencidos(ahora())]:
+            try:
+                servidor = self.servidores.find_by_id(servidor_id)
+                self.historial.cerrar_todos(servidor, "servidor_vencido")
+                self.servidores.delete(servidor)
+                self.db.commit()
+                borrados += 1
+            except Exception:
+                self.db.rollback()
+                log.exception("No se pudo borrar el servidor temporal %s", servidor_id)
+        return borrados
 
     # ---------- Ver / modificar / borrar ----------
     def get(self, servidor_id: int, actual_id: int) -> ServidorResponseDTO:

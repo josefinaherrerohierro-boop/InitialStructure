@@ -321,7 +321,7 @@ export function InvitarModal({ abierto, onCerrar, servidor }: BaseProps & { serv
     setError(null)
     setCargando(true)
     try {
-      const fecha = vence.length === 16 ? `${vence}:00` : vence
+      const fecha = new Date(vence).toISOString()
       const inv = await crearInvitacion(servidor.id, { usos_maximos: Number(usos), fecha_vencimiento: fecha })
       setInvitacion(inv)
     } catch (err) {

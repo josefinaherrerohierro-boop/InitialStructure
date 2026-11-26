@@ -14,7 +14,7 @@ import {
 } from '@/lib/api'
 import { parseFecha, type Permisos } from '@/lib/kort'
 import { cn } from '@/lib/utils'
-import { aInputFecha } from './encuesta-modal'
+import { aInputFecha, aISO } from './encuesta-modal'
 import { Modal } from './modal'
 import { useToast } from './toast-provider'
 import { Avatar, Boton, Campo, ErrorFormulario, Input } from './ui'
@@ -73,7 +73,7 @@ function FormularioEvento({
     e.preventDefault()
     setError(null)
     setCargando(true)
-    const datos = { titulo: titulo.trim(), descripcion, lugar, inicio: `${inicio}:00`, fin: fin ? `${fin}:00` : null }
+    const datos = { titulo: titulo.trim(), descripcion, lugar, inicio: aISO(inicio), fin: fin ? aISO(fin) : null }
     try {
       if (evento) await editarEvento(evento.id, datos)
       else await crearEvento(servidorId, datos)
@@ -225,8 +225,8 @@ export function CalendarioView({
     const primero = new Date(mes.getFullYear(), mes.getMonth(), 1 - desfase)
     return Array.from({ length: 42 }, (_, i) => new Date(primero.getFullYear(), primero.getMonth(), primero.getDate() + i))
   }, [mes])
-  const desde = aInputFecha(dias[0]) + ':00'
-  const hasta = aInputFecha(new Date(dias[41].getFullYear(), dias[41].getMonth(), dias[41].getDate() + 1)) + ':00'
+  const desde = dias[0].toISOString()
+  const hasta = new Date(dias[41].getFullYear(), dias[41].getMonth(), dias[41].getDate() + 1).toISOString()
 
   const { data: eventos, mutate } = useSWR(['eventos', servidorId, desde], () => getEventos(servidorId, desde, hasta), {
     refreshInterval: 30000,

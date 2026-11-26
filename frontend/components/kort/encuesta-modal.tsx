@@ -9,6 +9,14 @@ import { Boton, Campo, ErrorFormulario, Input } from './ui'
 
 const MAX_OPCIONES = 10
 
+/**
+ * Valor de un <input type="datetime-local"> (hora local, sin zona) → fecha ISO
+ * con zona. Así el backend la entiende bien aunque su reloj esté en otra zona.
+ */
+export function aISO(valorInput: string): string {
+  return new Date(valorInput).toISOString()
+}
+
 /** Fecha y hora local en el formato de <input type="datetime-local">. */
 export function aInputFecha(d: Date): string {
   const p = (n: number) => String(n).padStart(2, '0')
@@ -57,7 +65,7 @@ export function CrearEncuestaModal({
         pregunta: pregunta.trim(),
         opciones: limpias,
         multiple,
-        fecha_limite: conLimite ? `${limite}:00` : null,
+        fecha_limite: conLimite ? aISO(limite) : null,
       })
       onCreada(m)
       cerrar()

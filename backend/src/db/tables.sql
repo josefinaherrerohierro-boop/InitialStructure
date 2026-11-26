@@ -301,10 +301,11 @@ CREATE TABLE IF NOT EXISTS publicaciones (
     -- Flyer: invitación a un servidor para que cualquiera se una desde la publicación.
     invitacion_id INTEGER     REFERENCES invitaciones(id) ON DELETE SET NULL,
     fecha        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT chk_publicacion_valida CHECK (
-        char_length(contenido) <= 2000
-        AND (char_length(btrim(contenido)) > 0 OR imagen_url IS NOT NULL OR invitacion_id IS NOT NULL)
-    )
+    -- Que tenga texto, imagen o flyer lo valida la API. No va en un CHECK porque,
+    -- si se borra el servidor del flyer, invitacion_id pasa a NULL y la base
+    -- rechazaría el borrado. Las publicaciones que quedan vacías las borra la
+    -- limpieza automática.
+    CONSTRAINT chk_publicacion_valida CHECK (char_length(contenido) <= 2000)
 );
 
 CREATE TABLE IF NOT EXISTS publicacion_likes (
@@ -332,9 +333,8 @@ CREATE TABLE IF NOT EXISTS estados (
     invitacion_id INTEGER     REFERENCES invitaciones(id) ON DELETE SET NULL,  -- flyer
     fecha        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     vence        TIMESTAMP    NOT NULL,
-    CONSTRAINT chk_estado_valido CHECK (
-        char_length(btrim(contenido)) > 0 OR imagen_url IS NOT NULL OR invitacion_id IS NOT NULL
-    )
+    -- Igual que en publicaciones: el contenido lo valida la API.
+    CONSTRAINT chk_estado_valido CHECK (char_length(contenido) <= 200)
 );
 
 

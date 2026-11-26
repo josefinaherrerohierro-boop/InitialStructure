@@ -15,7 +15,8 @@ class CreateMensajeDirectoSchema(BaseModel):
 
 
 class UpdateMensajeDirectoSchema(BaseModel):
-    contenido: str = Field(min_length=1, max_length=2000)
+    # Puede quedar vacío si el mensaje tiene un adjunto (lo controla el service).
+    contenido: str = Field(default="", max_length=2000)
 
 
 class MiFotoSchema(BaseModel):

@@ -12,6 +12,8 @@ class EventoDatosDTO(BaseModel):
     lugar: str | None = None
     inicio: datetime | None = None
     fin: datetime | None = None
+    # Para distinguir "no mandó fin" de "mandó fin en null" (sacar la hora de fin).
+    campos_enviados: set[str] = set()
 
 
 class EventoDTO(BaseModel):

@@ -160,6 +160,16 @@ class PublicacionRepository:
         self.db.delete(estado)
         self.db.flush()
 
+    def borrar_vacias(self) -> int:
+        """Publicaciones y estados que quedaron sin nada (un flyer cuyo servidor se borró)."""
+        vacio = lambda modelo: (  # noqa: E731
+            (func.btrim(modelo.contenido) == "") & modelo.imagen_url.is_(None) & modelo.invitacion_id.is_(None)
+        )
+        cantidad = self.db.query(Publicacion).filter(vacio(Publicacion)).delete(synchronize_session=False)
+        cantidad += self.db.query(Estado).filter(vacio(Estado)).delete(synchronize_session=False)
+        self.db.flush()
+        return cantidad
+
     def borrar_estados_vencidos(self, ahora: datetime) -> int:
         cantidad = self.db.query(Estado).filter(Estado.vence <= ahora).delete(synchronize_session=False)
         self.db.flush()

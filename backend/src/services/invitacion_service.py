@@ -31,7 +31,11 @@ class InvitacionService:
         self.permisos = PermisosService(db)
 
     # ---------- HU5: crear invitación ----------
-    def create(self, servidor_id: int, dto: CreateInvitacionDTO, actual_id: int) -> InvitacionResponseDTO:
+    def create(
+        self, servidor_id: int, dto: CreateInvitacionDTO, actual_id: int, confirmar: bool = True
+    ) -> InvitacionResponseDTO:
+        """Con confirmar=False no hace commit: lo hace quien la llama (por ejemplo,
+        un flyer se guarda junto con su publicación, todo o nada)."""
         servidor = self.permisos.obtener_servidor(servidor_id)
         # Solo el dueño o un miembro con un rol con puede_invitar = true.
         if not self.permisos.puede_invitar(servidor, actual_id):
@@ -48,7 +52,8 @@ class InvitacionService:
             usos_maximos=dto.usos_maximos,
             fecha_vencimiento=vencimiento,
         )
-        self.db.commit()
+        if confirmar:
+            self.db.commit()
         return to_invitacion_response(invitacion)
 
     # ---------- Listar invitaciones del servidor ----------

@@ -26,10 +26,15 @@ class ArchivoService:
             return None
         if not archivos.es_url_propia(adjunto.url):
             raise UnprocessableError("El adjunto tiene que ser un archivo subido a Kort")
-        if adjunto.tipo not in ("imagen", "audio", "video", "archivo"):
+        # El tipo sale de la extensión del archivo guardado, no de lo que diga el cliente
+        # (un .zip no puede hacerse pasar por imagen). Un .webm puede ser audio o video.
+        real = archivos.tipo_de_archivo(adjunto.url, None)
+        ambiguo = adjunto.url.lower().endswith(tuple(archivos.EXTENSIONES_AMBIGUAS))
+        tipo = adjunto.tipo if ambiguo and adjunto.tipo in ("audio", "video") else real
+        if tipo is None:
             raise UnprocessableError("Tipo de adjunto inválido")
         nombre = (adjunto.nombre or "").strip()[:255] or None
-        return AdjuntoDTO(url=adjunto.url, tipo=adjunto.tipo, nombre=nombre)
+        return AdjuntoDTO(url=adjunto.url, tipo=tipo, nombre=nombre)
 
     @staticmethod
     def validar_imagen(url: str | None) -> str | None:

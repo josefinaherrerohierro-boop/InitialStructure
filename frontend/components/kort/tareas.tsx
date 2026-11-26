@@ -16,7 +16,7 @@ import {
 import { horaMensaje, type Permisos } from '@/lib/kort'
 import { cn } from '@/lib/utils'
 import { Interruptor } from './config/confirmar'
-import { aInputFecha } from './encuesta-modal'
+import { aInputFecha, aISO } from './encuesta-modal'
 import { Modal } from './modal'
 import { useToast } from './toast-provider'
 import { Avatar, Boton, Campo, ErrorFormulario, Input } from './ui'
@@ -73,7 +73,7 @@ function NuevaTareaModal({
         titulo: titulo.trim(),
         descripcion,
         asignado_id: asignado ? Number(asignado) : null,
-        fecha_limite: limite ? `${limite}:00` : null,
+        fecha_limite: limite ? aISO(limite) : null,
       })
       onCreada()
       cerrar()

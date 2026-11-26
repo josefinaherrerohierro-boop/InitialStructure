@@ -1,6 +1,7 @@
 'use client'
 
-import { ExternalLink, Link2 } from 'lucide-react'
+import { useState } from 'react'
+import { ExternalLink, Image as ImageIcon, Link2 } from 'lucide-react'
 
 const PATRON_LINK = /(https?:\/\/[^\s<>"']+[^\s<>"'.,;:!?)\]])/g
 
@@ -60,6 +61,35 @@ export function TextoConLinks({ texto }: { texto: string }) {
   )
 }
 
+/**
+ * Imagen de otro sitio: no se carga sola. Si se cargara, ese sitio vería la IP
+ * y la hora de cada persona que abre el chat (sirve para espiar).
+ */
+function ImagenExterna({ url }: { url: string }) {
+  const [ver, setVer] = useState(false)
+  if (!ver) {
+    return (
+      <button
+        type="button"
+        onClick={() => setVer(true)}
+        className="flex w-80 max-w-[75vw] items-center gap-2.5 rounded-lg border border-dashed border-border bg-surface px-3 py-2.5 text-left hover:border-primary/50"
+      >
+        <ImageIcon className="size-5 shrink-0 text-primary" aria-hidden />
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-medium">Imagen de {dominio(url)}</span>
+          <span className="block text-xs text-muted-foreground">Tocá para verla (se carga desde ese sitio)</span>
+        </span>
+      </button>
+    )
+  }
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer nofollow" className="block w-fit">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={url} alt="Imagen del link" referrerPolicy="no-referrer" className="max-h-72 max-w-[min(24rem,75vw)] rounded-lg border border-border" />
+    </a>
+  )
+}
+
 /** Vista previa de los links de un mensaje: videos de YouTube, imágenes o una tarjeta con el sitio. */
 export function VistaPreviaLinks({ texto }: { texto: string }) {
   const links = extraerLinks(texto).slice(0, 3)
@@ -91,14 +121,7 @@ export function VistaPreviaLinks({ texto }: { texto: string }) {
             </a>
           )
         }
-        if (esImagen(url)) {
-          return (
-            <a key={url} href={url} target="_blank" rel="noopener noreferrer nofollow" className="block w-fit">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={url} alt="Imagen del link" loading="lazy" className="max-h-72 max-w-sm rounded-lg border border-border" />
-            </a>
-          )
-        }
+        if (esImagen(url)) return <ImagenExterna key={url} url={url} />
         return (
           <a
             key={url}

@@ -65,7 +65,8 @@ export function MessageItem({
 
   async function guardar() {
     const contenido = borrador.trim()
-    if (!contenido || contenido === mensaje.contenido) {
+    // Sin texto solo se puede si el mensaje tiene un adjunto (una foto sin epígrafe, por ejemplo).
+    if ((!contenido && !mensaje.adjunto) || contenido === mensaje.contenido) {
       setEditando(false)
       return
     }

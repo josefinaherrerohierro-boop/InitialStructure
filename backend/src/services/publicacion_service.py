@@ -80,11 +80,15 @@ class PublicacionService:
                 raise ForbiddenError("No tenés permiso para publicar en este servidor")
             if dto.promocionar_servidor_id is not None:
                 raise UnprocessableError("Los flyers se publican afuera de los servidores, en tu perfil")
-        invitacion_id = self._crear_invitacion_flyer(dto.promocionar_servidor_id, actual_id)
-        if not contenido and not imagen and invitacion_id is None:
+        if not contenido and not imagen and dto.promocionar_servidor_id is None:
             raise UnprocessableError("La publicación tiene que tener texto, una imagen o un servidor para promocionar")
-        p = self.publicaciones.create(actual_id, contenido, imagen, dto.servidor_id, invitacion_id)
-        self.db.commit()
+        invitacion_id = self._crear_invitacion_flyer(dto.promocionar_servidor_id, actual_id)
+        try:
+            p = self.publicaciones.create(actual_id, contenido, imagen, dto.servidor_id, invitacion_id)
+            self.db.commit()
+        except Exception:
+            self.db.rollback()  # si falla, tampoco queda la invitación del flyer
+            raise
         return self._armar([(p, self.usuarios.find_by_id(actual_id))], actual_id)[0]
 
     def borrar(self, publicacion_id: int, actual_id: int) -> None:
@@ -161,14 +165,18 @@ class PublicacionService:
         momento = ahora()
         if self.publicaciones.contar_activos(actual_id, momento) >= MAXIMO_ESTADOS_ACTIVOS:
             raise UnprocessableError(f"Podés tener hasta {MAXIMO_ESTADOS_ACTIVOS} estados a la vez")
-        invitacion_id = self._crear_invitacion_flyer(dto.promocionar_servidor_id, actual_id)
-        if not contenido and not imagen and invitacion_id is None:
+        if not contenido and not imagen and dto.promocionar_servidor_id is None:
             raise UnprocessableError("El estado tiene que tener texto, una imagen o un servidor para promocionar")
-        e = self.publicaciones.crear_estado(
-            actual_id, contenido[:200], imagen, dto.color_fondo.lower(), momento + timedelta(hours=DURACION_ESTADO_HORAS),
-            invitacion_id,
-        )
-        self.db.commit()
+        invitacion_id = self._crear_invitacion_flyer(dto.promocionar_servidor_id, actual_id)
+        try:
+            e = self.publicaciones.crear_estado(
+                actual_id, contenido[:200], imagen, dto.color_fondo.lower(), momento + timedelta(hours=DURACION_ESTADO_HORAS),
+                invitacion_id,
+            )
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+            raise
         dto_estado = EstadoDTO.model_validate(e)
         dto_estado.flyer = self._flyer(e.invitacion_id, actual_id)
         return dto_estado
@@ -190,6 +198,7 @@ class PublicacionService:
             servidor_id,
             CreateInvitacionDTO(usos_maximos=USOS_FLYER, fecha_vencimiento=ahora() + timedelta(days=DIAS_FLYER)),
             actual_id,
+            confirmar=False,  # se confirma junto con la publicación o el estado
         )
         return invitacion.id
 

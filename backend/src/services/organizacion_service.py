@@ -82,8 +82,10 @@ class CalendarioService:
             cambios["descripcion"] = _limpio(dto.descripcion, "descripción")
         if dto.lugar is not None:
             cambios["lugar"] = _limpio(dto.lugar, "lugar")
-        if dto.inicio is not None or dto.fin is not None:
-            inicio, fin = self._validar_fechas(dto.inicio or evento.inicio, dto.fin if dto.fin is not None else evento.fin)
+        if dto.inicio is not None or "fin" in dto.campos_enviados:
+            # fin en null (mandado a propósito) = el evento no tiene hora de fin.
+            fin = dto.fin if "fin" in dto.campos_enviados else evento.fin
+            inicio, fin = self._validar_fechas(dto.inicio or evento.inicio, fin)
             cambios.update(inicio=inicio, fin=fin)
         self.eventos.update(evento, **cambios)
         self.db.commit()

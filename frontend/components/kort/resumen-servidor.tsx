@@ -15,7 +15,6 @@ import {
 import { horaMensaje, parseFecha } from '@/lib/kort'
 import { cn } from '@/lib/utils'
 import type { VistaServidor } from './barra-servidor'
-import { aInputFecha } from './encuesta-modal'
 import { Avatar } from './ui'
 
 const saludo = () => {
@@ -99,8 +98,8 @@ export function ResumenServidor({
   onVerPerfil: (id: number) => void
 }) {
   const ahora = new Date()
-  const desde = aInputFecha(ahora) + ':00'
-  const hasta = aInputFecha(new Date(ahora.getTime() + 45 * 24 * 3600 * 1000)) + ':00'
+  const desde = ahora.toISOString()
+  const hasta = new Date(ahora.getTime() + 45 * 24 * 3600 * 1000).toISOString()
   const { data: eventos } = useSWR(['resumen-eventos', servidor.id], () => getEventos(servidor.id, desde, hasta))
   const { data: tareas } = useSWR(['tareas', servidor.id, true], () => getTareas(servidor.id, true))
   const { data: publicaciones } = useSWR(['resumen-publicaciones', servidor.id], () => getPublicacionesDeServidor(servidor.id))

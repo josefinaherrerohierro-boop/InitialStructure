@@ -57,7 +57,8 @@ def editar_evento(
     db: Session = Depends(get_db),
     actual: Usuario = Depends(get_current_user),
 ):
-    return CalendarioService(db).editar(evento_id, EventoDatosDTO(**payload.model_dump()), actual.id)
+    dto = EventoDatosDTO(**payload.model_dump(), campos_enviados=set(payload.model_fields_set))
+    return CalendarioService(db).editar(evento_id, dto, actual.id)
 
 
 @router.delete("/eventos/{evento_id}", status_code=status.HTTP_204_NO_CONTENT)

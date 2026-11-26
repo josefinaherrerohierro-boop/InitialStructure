@@ -48,3 +48,7 @@ class HistorialServidorDTO(BaseModel):
     fecha_salida: datetime | None
     motivo_salida: str | None
     sigue_existiendo: bool
+    # True si hoy sigue siendo miembro (punto verde); False si ya no (punto rojo).
+    sigue_siendo_miembro: bool = False
+    # "Dueño", "Moderador", etc. Si es una lista vacía, era un miembro común.
+    roles: list[str] = []

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.sql import func
 
 from src.db.connection import Base
@@ -18,3 +18,5 @@ class HistorialServidor(Base):
     fecha_union = Column(DateTime, nullable=False, server_default=func.now())
     fecha_salida = Column(DateTime, nullable=True)
     motivo_salida = Column(String(20), nullable=True)
+    # Roles que tenía al salir, como lista JSON (ej: '["Dueño", "Moderador"]').
+    roles = Column(Text, nullable=True)

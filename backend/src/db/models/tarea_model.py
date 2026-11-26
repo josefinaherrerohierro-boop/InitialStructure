@@ -21,3 +21,8 @@ class Tarea(Base):
     estado = Column(String(12), nullable=False, default="pendiente")
     fecha_creacion = Column(DateTime, nullable=False, server_default=func.now())
     fecha_completada = Column(DateTime, nullable=True)
+    imagen_url = Column(String(255), nullable=True)
+    # Puntos del scoreboard para quien la complete (los fija un moderador o el dueño).
+    puntos = Column(Integer, nullable=False, default=0)
+    # A quién se le dieron los puntos al completarla (para descontarlos si se reabre).
+    puntos_otorgados_a = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)

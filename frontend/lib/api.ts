@@ -533,6 +533,10 @@ export type HistorialServidor = {
   fecha_salida: string | null
   motivo_salida: 'salio' | 'expulsado' | 'baneado' | 'servidor_borrado' | 'servidor_vencido' | null
   sigue_existiendo: boolean
+  /** true: hoy sigue en el servidor (punto verde). false: ya no (punto rojo). */
+  sigue_siendo_miembro: boolean
+  /** "Dueño", "Moderador", etc. Vacía = miembro común. */
+  roles: string[]
 }
 export const getHistorialServidores = () => request<HistorialServidor[]>('/perfiles/me/historial-servidores')
 
@@ -648,6 +652,11 @@ export type Tarea = {
   vencida: boolean
   fecha_creacion: string
   fecha_completada: string | null
+  imagen_url: string | null
+  /** Puntos del scoreboard que gana quien la complete (los fija un moderador o el dueño). */
+  puntos: number
+  /** A quién se le dieron los puntos al completarla. */
+  puntos_otorgados_a: UsuarioResumen | null
 }
 export type DatosTarea = {
   titulo?: string
@@ -655,6 +664,8 @@ export type DatosTarea = {
   asignado_id?: number | null
   fecha_limite?: string | null
   estado?: EstadoTarea
+  imagen_url?: string | null
+  puntos?: number
 }
 
 export const getTareas = (servidorId: number, mias = false) =>

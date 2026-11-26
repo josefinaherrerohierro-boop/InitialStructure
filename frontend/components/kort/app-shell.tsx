@@ -67,6 +67,20 @@ type ModalAbierto = 'crearServidor' | 'unirme' | 'crearCanal' | 'invitar' | 'con
 
 export function AppShell() {
   const toast = useToast()
+
+  // La app ocupa exactamente la pantalla y cada panel tiene su propio scroll.
+  // Se bloquea el scroll de la página entera: si no, algunos elementos ocultos
+  // (por ejemplo, los textos para lectores de pantalla de las publicaciones)
+  // podían estirar la página y aparecía un bloque vacío abajo al scrollear.
+  useEffect(() => {
+    const html = document.documentElement
+    const anterior = html.style.overflow
+    html.style.overflow = 'hidden'
+    return () => {
+      html.style.overflow = anterior
+    }
+  }, [])
+
   return (
     <SWRConfig
       value={{
@@ -435,7 +449,7 @@ function AppShellInterno() {
         </div>
       )
       contenido = yo && (
-        <div className="scrollbar-thin flex-1 overflow-y-auto">
+        <div className="scrollbar-thin relative min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-6">
             <EstadosBarra yo={yo} />
             <PublicacionesLista
@@ -500,7 +514,7 @@ function AppShellInterno() {
           onVerPerfil={setPerfilAbierto}
         />
       ) : herramienta === 'publicaciones' ? (
-        <div className="scrollbar-thin flex-1 overflow-y-auto">
+        <div className="scrollbar-thin relative min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <div className="mx-auto max-w-2xl px-4 py-6">
             <PublicacionesLista
               key={servidor.id}
@@ -758,7 +772,7 @@ function AppShellInterno() {
           yo && (
             <div className="flex flex-col gap-2">
               <p className="text-xs font-semibold text-muted-foreground">Publicaciones</p>
-              <div className="scrollbar-thin -mx-2 max-h-96 overflow-y-auto px-2">
+              <div className="scrollbar-thin relative -mx-2 max-h-96 overflow-y-auto px-2">
                 <PublicacionesLista
                   clave={`perfil-${perfil.id}`}
                   cargar={(antesDe) => getPublicacionesDePerfil(perfil.id, antesDe)}

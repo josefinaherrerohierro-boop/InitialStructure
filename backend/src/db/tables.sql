@@ -297,7 +297,10 @@ CREATE TABLE IF NOT EXISTS historial_servidores (
     fecha_union      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     fecha_salida     TIMESTAMP,
     motivo_salida    VARCHAR(20)  CHECK (motivo_salida IN (
-                         'salio', 'expulsado', 'baneado', 'servidor_borrado', 'servidor_vencido'))
+                         'salio', 'expulsado', 'baneado', 'servidor_borrado', 'servidor_vencido')),
+    -- Roles que tenía al salir (lista JSON, ej: ["Dueño", "Moderador"]).
+    -- Mientras sigue siendo miembro queda en NULL: se calculan en el momento.
+    roles            TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_historial_usuario ON historial_servidores (usuario_id, fecha_union);
 
@@ -381,7 +384,15 @@ CREATE TABLE IF NOT EXISTS tareas (
     estado            VARCHAR(12)   NOT NULL DEFAULT 'pendiente'
                       CHECK (estado IN ('pendiente', 'en_progreso', 'hecha')),
     fecha_creacion    TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    fecha_completada  TIMESTAMP
+    fecha_completada  TIMESTAMP,
+    -- Imagen opcional de la tarea (archivo subido a Kort).
+    imagen_url        VARCHAR(255),
+    -- Puntos para el scoreboard que gana quien la complete (los fija un
+    -- moderador o el dueño). Se otorgan al pasarla a 'hecha' y se descuentan
+    -- si se vuelve a abrir. puntos_otorgados_a guarda a quién se le dieron.
+    puntos            INTEGER       NOT NULL DEFAULT 0,
+    puntos_otorgados_a INTEGER      REFERENCES usuarios(id) ON DELETE SET NULL,
+    CONSTRAINT chk_tarea_puntos CHECK (puntos BETWEEN 0 AND 1000)
 );
 
 

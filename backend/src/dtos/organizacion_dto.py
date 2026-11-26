@@ -36,6 +36,8 @@ class TareaDatosDTO(BaseModel):
     asignado_id: int | None = None
     fecha_limite: datetime | None = None
     estado: str | None = None
+    imagen_url: str | None = None
+    puntos: int | None = None
     # Para distinguir "no lo mandó" de "lo mandó en null" (desasignar o sacar la fecha).
     campos_enviados: set[str] = set()
 
@@ -52,6 +54,10 @@ class TareaDTO(BaseModel):
     vencida: bool
     fecha_creacion: datetime
     fecha_completada: datetime | None
+    imagen_url: str | None = None
+    puntos: int = 0
+    # Quién recibió los puntos al completarla (None si todavía no se otorgaron).
+    puntos_otorgados_a: UsuarioResumenDTO | None = None
 
 
 # ---------- Scoreboard ----------

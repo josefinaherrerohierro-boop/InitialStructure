@@ -46,9 +46,9 @@ class MiembroService:
         """Quita al usuario del servidor. Puede volver con otra invitación válida."""
         servidor, miembro = self._validar_moderacion(servidor_id, usuario_id, actual_id, "expulsar")
 
+        self.historial.cerrar(usuario_id, servidor, "expulsado")  # antes de quitarle los roles
         self.roles.quitar_todos_en_servidor(usuario_id, servidor.id)
         self.miembros.delete(miembro)
-        self.historial.cerrar(usuario_id, servidor.id, "expulsado")
         self.db.commit()
 
     # ---------- HU9: banear ----------
@@ -57,9 +57,9 @@ class MiembroService:
         quita sus roles en el servidor."""
         servidor, miembro = self._validar_moderacion(servidor_id, usuario_id, actual_id, "banear")
 
+        self.historial.cerrar(usuario_id, servidor, "baneado")  # antes de quitarle los roles
         self.roles.quitar_todos_en_servidor(usuario_id, servidor.id)
         self.miembros.marcar_baneado(miembro)
-        self.historial.cerrar(usuario_id, servidor.id, "baneado")
         self.db.commit()
 
     # ---------- HU10: salir del servidor ----------
@@ -75,9 +75,9 @@ class MiembroService:
 
         miembro = self.miembros.find(actual_id, servidor.id)
         # Al salir se le quitan sus roles de ese servidor.
+        self.historial.cerrar(actual_id, servidor, "salio")  # antes de quitarle los roles
         self.roles.quitar_todos_en_servidor(actual_id, servidor.id)
         self.miembros.delete(miembro)
-        self.historial.cerrar(actual_id, servidor.id, "salio")
         self.db.commit()
 
     # ---------- Lo que cada uno configura para sí en el servidor ----------

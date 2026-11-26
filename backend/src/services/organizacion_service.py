@@ -20,6 +20,7 @@ from src.mappers.social_mapper import to_usuario_resumen
 from src.repositories.miembro_repository import MiembroRepository
 from src.repositories.organizacion_repository import EventoRepository, PuntoRepository, TareaRepository
 from src.repositories.usuario_repository import UsuarioRepository
+from src.services.archivo_service import ArchivoService
 from src.services.permisos_service import PermisosService
 from src.utils.errors import ForbiddenError, NotFoundError, UnprocessableError
 from src.utils.fechas import a_hora_local, ahora
@@ -166,13 +167,19 @@ class TareaService:
 
     - Crear: miembros con permiso de escribir. Asignarle una tarea a OTRA
       persona solo lo puede hacer un moderador (cualquiera se puede asignar a sí mismo).
-    - Cambiar el estado: la persona asignada, quien la creó o un moderador.
-    - Editar el resto o borrar: quien la creó o un moderador.
+    - Cambiar el estado (arrastrarla de columna): la persona asignada, quien
+      la creó o un moderador.
+    - Editar el resto (título, descripción, imagen, fecha) o borrar: quien la
+      creó o un moderador/dueño.
+    - Puntos: solo un moderador o el dueño fija cuántos puntos gana quien la
+      complete. Se otorgan al pasarla a "hecha" (a la persona asignada o, si no
+      hay, a quien la completó) y se descuentan si se vuelve a abrir.
     """
 
     def __init__(self, db: Session):
         self.db = db
         self.tareas = TareaRepository(db)
+        self.puntos = PuntoRepository(db)
         self.usuarios = UsuarioRepository(db)
         self.permisos = PermisosService(db)
 
@@ -188,6 +195,9 @@ class TareaService:
             raise ForbiddenError("No tenés permiso para crear tareas en este servidor")
         if dto.asignado_id is not None:
             self._validar_asignacion(servidor, dto.asignado_id, actual_id)
+        puntos = dto.puntos or 0
+        if puntos and not self.permisos.es_moderador(servidor, actual_id):
+            raise ForbiddenError("Solo un moderador o el dueño pueden ponerle puntos a una tarea")
         tarea = self.tareas.create(
             servidor_id=servidor.id,
             creador_id=actual_id,
@@ -196,6 +206,8 @@ class TareaService:
             descripcion=_limpio(dto.descripcion, "descripción"),
             fecha_limite=a_hora_local(dto.fecha_limite) if dto.fecha_limite else None,
             estado="pendiente",
+            imagen_url=ArchivoService.validar_imagen(dto.imagen_url),
+            puntos=puntos,
         )
         self.db.commit()
         return self._dto(tarea)
@@ -213,10 +225,22 @@ class TareaService:
                 raise ForbiddenError("Solo la persona asignada, quien la creó o un moderador pueden cambiar el estado")
             if dto.estado not in ESTADOS_TAREA:
                 raise UnprocessableError("Estado inválido")
-            cambios["estado"] = dto.estado
-            cambios["fecha_completada"] = ahora() if dto.estado == "hecha" else None
+            if dto.estado != tarea.estado:
+                cambios["estado"] = dto.estado
+                cambios["fecha_completada"] = ahora() if dto.estado == "hecha" else None
+                if dto.estado == "hecha":
+                    cambios.update(self._otorgar_puntos(tarea, actual_id))
+                elif tarea.estado == "hecha":
+                    cambios.update(self._descontar_puntos(tarea))
 
-        otros = dto.campos_enviados & {"titulo", "descripcion", "fecha_limite", "asignado_id"}
+        if "puntos" in dto.campos_enviados and dto.puntos is not None and dto.puntos != tarea.puntos:
+            if not es_moderador:
+                raise ForbiddenError("Solo un moderador o el dueño pueden cambiar los puntos de una tarea")
+            if tarea.estado == "hecha" or cambios.get("estado") == "hecha":
+                raise UnprocessableError("La tarea ya está hecha: volvé a abrirla para cambiar los puntos")
+            cambios["puntos"] = dto.puntos
+
+        otros = dto.campos_enviados & {"titulo", "descripcion", "fecha_limite", "asignado_id", "imagen_url"}
         if otros:
             # Tomar una tarea sin asignar (asignármela a mí) lo puede hacer cualquiera.
             solo_tomarla = otros == {"asignado_id"} and dto.asignado_id == actual_id and tarea.asignado_id is None
@@ -228,10 +252,13 @@ class TareaService:
                 cambios["descripcion"] = _limpio(dto.descripcion, "descripción")
             if "fecha_limite" in otros:
                 cambios["fecha_limite"] = a_hora_local(dto.fecha_limite) if dto.fecha_limite else None
-            if "asignado_id" in otros:
+            if "asignado_id" in otros and dto.asignado_id != tarea.asignado_id:
+                # Solo se valida si cambia: al editar el título se manda el mismo responsable.
                 if dto.asignado_id is not None:
                     self._validar_asignacion(servidor, dto.asignado_id, actual_id)
                 cambios["asignado_id"] = dto.asignado_id
+            if "imagen_url" in otros and dto.imagen_url != tarea.imagen_url:
+                cambios["imagen_url"] = ArchivoService.validar_imagen(dto.imagen_url)
 
         self.tareas.update(tarea, **cambios)
         self.db.commit()
@@ -246,6 +273,26 @@ class TareaService:
         self.db.commit()
 
     # ---------- Ayudas internas ----------
+    def _otorgar_puntos(self, tarea: Tarea, actual_id: int) -> dict:
+        """Al completar la tarea: le da sus puntos a la persona asignada (o, si
+        no hay nadie asignado, a quien la completó). Solo si sigue siendo miembro."""
+        if not tarea.puntos:
+            return {}
+        receptor = tarea.asignado_id or actual_id
+        if not self.permisos.es_miembro(tarea.servidor_id, receptor):
+            return {}
+        self.puntos.create(tarea.servidor_id, receptor, tarea.puntos, f"Tarea: {tarea.titulo}"[:100], tarea.creador_id)
+        return {"puntos_otorgados_a": receptor}
+
+    def _descontar_puntos(self, tarea: Tarea) -> dict:
+        """Si una tarea hecha se vuelve a abrir, se descuentan los puntos que se habían dado."""
+        if not tarea.puntos or tarea.puntos_otorgados_a is None:
+            return {}
+        self.puntos.create(
+            tarea.servidor_id, tarea.puntos_otorgados_a, -tarea.puntos, f"Tarea reabierta: {tarea.titulo}"[:100], None
+        )
+        return {"puntos_otorgados_a": None}
+
     def _validar_asignacion(self, servidor: Servidor, asignado_id: int, actual_id: int) -> None:
         if asignado_id != actual_id and not self.permisos.es_moderador(servidor, actual_id):
             raise ForbiddenError("Solo un moderador puede asignarle tareas a otras personas")
@@ -260,6 +307,7 @@ class TareaService:
 
     def _dto(self, t: Tarea) -> TareaDTO:
         asignado = self.usuarios.find_by_id(t.asignado_id) if t.asignado_id else None
+        receptor = self.usuarios.find_by_id(t.puntos_otorgados_a) if t.puntos_otorgados_a else None
         return TareaDTO(
             id=t.id,
             servidor_id=t.servidor_id,
@@ -272,6 +320,9 @@ class TareaService:
             vencida=t.estado != "hecha" and t.fecha_limite is not None and t.fecha_limite < ahora(),
             fecha_creacion=t.fecha_creacion,
             fecha_completada=t.fecha_completada,
+            imagen_url=t.imagen_url,
+            puntos=t.puntos or 0,
+            puntos_otorgados_a=to_usuario_resumen(receptor) if receptor else None,
         )
 
 

@@ -202,11 +202,11 @@ INSERT INTO eventos (servidor_id, creador_id, titulo, descripcion, lugar, inicio
 INSERT INTO evento_asistentes (evento_id, usuario_id) VALUES (1, 1), (1, 2), (1, 3), (2, 2), (3, 3), (3, 1);
 
 -- TAREAS --------------------------------------------------------------
-INSERT INTO tareas (servidor_id, creador_id, asignado_id, titulo, descripcion, fecha_limite, estado, fecha_completada) VALUES
-(1, 1, 2,    'Diagrama de clases',    'Usar draw.io', CURRENT_TIMESTAMP + INTERVAL '3 days', 'en_progreso', NULL),
-(1, 1, 3,    'Armar la presentación', '',             CURRENT_TIMESTAMP + INTERVAL '5 days', 'pendiente',   NULL),
-(1, 2, 4,    'Probar los endpoints',  'Con Swagger',  CURRENT_TIMESTAMP - INTERVAL '1 day',  'hecha',       CURRENT_TIMESTAMP - INTERVAL '1 day'),
-(1, 1, NULL, 'Conseguir proyector',   '',             NULL,                                  'pendiente',   NULL);
+INSERT INTO tareas (servidor_id, creador_id, asignado_id, titulo, descripcion, fecha_limite, estado, fecha_completada, puntos) VALUES
+(1, 1, 2,    'Diagrama de clases',    'Usar draw.io', CURRENT_TIMESTAMP + INTERVAL '3 days', 'en_progreso', NULL, 0),
+(1, 1, 3,    'Armar la presentación', '',             CURRENT_TIMESTAMP + INTERVAL '5 days', 'pendiente',   NULL, 10),
+(1, 2, 4,    'Probar los endpoints',  'Con Swagger',  CURRENT_TIMESTAMP - INTERVAL '1 day',  'hecha',       CURRENT_TIMESTAMP - INTERVAL '1 day', 0),
+(1, 1, NULL, 'Conseguir proyector',   '',             NULL,                                  'pendiente',   NULL, 5);
 
 -- SCOREBOARD ----------------------------------------------------------
 INSERT INTO puntos (servidor_id, usuario_id, otorgado_por, cantidad, motivo) VALUES

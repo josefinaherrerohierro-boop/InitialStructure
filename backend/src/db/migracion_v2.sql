@@ -331,3 +331,15 @@ ALTER TABLE servidores ADD COLUMN IF NOT EXISTS clave_borrado_hash VARCHAR(255);
 ALTER TABLE servidores ADD COLUMN IF NOT EXISTS publico     BOOLEAN      NOT NULL DEFAULT FALSE;
 ALTER TABLE servidores ADD COLUMN IF NOT EXISTS descripcion VARCHAR(300) NOT NULL DEFAULT '';
 CREATE INDEX IF NOT EXISTS idx_servidores_publicos ON servidores (publico) WHERE publico;
+
+
+-- Tareas: imagen y puntos para quien la complete -----------------------------
+ALTER TABLE tareas ADD COLUMN IF NOT EXISTS imagen_url VARCHAR(255);
+ALTER TABLE tareas ADD COLUMN IF NOT EXISTS puntos INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE tareas ADD COLUMN IF NOT EXISTS puntos_otorgados_a INTEGER REFERENCES usuarios(id) ON DELETE SET NULL;
+ALTER TABLE tareas DROP CONSTRAINT IF EXISTS chk_tarea_puntos;
+ALTER TABLE tareas ADD CONSTRAINT chk_tarea_puntos CHECK (puntos BETWEEN 0 AND 1000);
+
+
+-- Historial: roles que tenía cada persona al salir del servidor --------------
+ALTER TABLE historial_servidores ADD COLUMN IF NOT EXISTS roles TEXT;

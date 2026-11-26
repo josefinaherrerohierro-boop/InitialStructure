@@ -1,3 +1,5 @@
+import json
+
 from sqlalchemy.orm import Session
 
 from src.db.models.perfil_model import REDES_PERMITIDAS, VISIBILIDADES_FOTO
@@ -146,18 +148,32 @@ class PerfilService:
 
     # ---------- Historial de servidores en los que estuve ----------
     def historial_servidores(self, actual_id: int) -> list[HistorialServidorDTO]:
-        return [
-            HistorialServidorDTO(
-                id=h.id,
-                servidor_id=h.servidor_id,
-                servidor_nombre=servidor.nombre if servidor else h.servidor_nombre,
-                fecha_union=h.fecha_union,
-                fecha_salida=h.fecha_salida,
-                motivo_salida=h.motivo_salida,
-                sigue_existiendo=servidor is not None,
+        resultado = []
+        for h, servidor in self.historial.list_de_usuario(actual_id):
+            sigue = h.fecha_salida is None and servidor is not None
+            if sigue:
+                # Sigue en el servidor: sus roles se calculan en el momento.
+                roles = self.historial.roles_actuales(actual_id, servidor)
+            else:
+                # Ya no está: se muestran los roles que tenía al salir (si se guardaron).
+                try:
+                    roles = json.loads(h.roles) if h.roles else []
+                except ValueError:
+                    roles = []
+            resultado.append(
+                HistorialServidorDTO(
+                    id=h.id,
+                    servidor_id=h.servidor_id,
+                    servidor_nombre=servidor.nombre if servidor else h.servidor_nombre,
+                    fecha_union=h.fecha_union,
+                    fecha_salida=h.fecha_salida,
+                    motivo_salida=h.motivo_salida,
+                    sigue_existiendo=servidor is not None,
+                    sigue_siendo_miembro=sigue,
+                    roles=[r for r in roles if isinstance(r, str)],
+                )
             )
-            for h, servidor in self.historial.list_de_usuario(actual_id)
-        ]
+        return resultado
 
     # ---------- Ayudas internas ----------
     def _buscar_o_404(self, usuario_id: int) -> Usuario:

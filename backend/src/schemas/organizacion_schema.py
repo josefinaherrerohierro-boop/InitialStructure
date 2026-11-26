@@ -24,6 +24,9 @@ class CreateTareaSchema(BaseModel):
     descripcion: str = Field(default="", max_length=1000)
     asignado_id: int | None = Field(default=None, gt=0)
     fecha_limite: datetime | None = None
+    imagen_url: str | None = Field(default=None, max_length=255)
+    # Puntos para quien la complete: solo los puede poner un moderador o el dueño.
+    puntos: int = Field(default=0, ge=0, le=1000)
 
 
 class UpdateTareaSchema(BaseModel):
@@ -34,6 +37,8 @@ class UpdateTareaSchema(BaseModel):
     asignado_id: int | None = Field(default=None, gt=0)
     fecha_limite: datetime | None = None
     estado: str | None = Field(default=None, pattern=r"^(pendiente|en_progreso|hecha)$")
+    imagen_url: str | None = Field(default=None, max_length=255)
+    puntos: int | None = Field(default=None, ge=0, le=1000)
 
 
 class DarPuntosSchema(BaseModel):

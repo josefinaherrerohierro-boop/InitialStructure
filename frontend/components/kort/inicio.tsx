@@ -7,13 +7,14 @@
 
 import { useState } from 'react'
 import useSWR, { useSWRConfig } from 'swr'
-import { ArrowDown, ArrowUp, Check, MessageCircle, Newspaper, Pin, PinOff, Sparkles, UserPlus, Users, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, Check, Copy, Link2, MessageCircle, Newspaper, Pin, PinOff, Sparkles, UserPlus, Users, X } from 'lucide-react'
 import {
   aceptarSolicitud,
   enviarSolicitud,
   fijarConversaciones,
   getAmigos,
   getConversaciones,
+  getMe,
   getSolicitudes,
   mensajeDeError,
   rechazarSolicitud,
@@ -245,6 +246,19 @@ function ListaConversaciones({
 
 type PestaniaAmigos = 'todos' | 'pendientes' | 'agregar'
 
+/** Link para que otra persona te mande una solicitud de amistad. */
+export function linkDeAmistad(username: string): string {
+  return `${window.location.origin}/amigo/${encodeURIComponent(username)}`
+}
+
+/** Acepta un nombre de usuario ("ana", "@ana") o un link de amistad (".../amigo/ana"). */
+export function usernameDesdeTexto(texto: string): string {
+  const limpio = texto.trim()
+  const enLink = limpio.match(/\/amigo\/([^/?#\s]+)/)
+  const nombre = enLink ? decodeURIComponent(enLink[1]) : limpio.replace(/^@/, '')
+  return nombre.trim().toLowerCase()
+}
+
 /** Pantalla de amigos: lista, solicitudes pendientes y agregar por nombre de usuario. */
 export function AmigosView({
   onMensaje,
@@ -260,14 +274,31 @@ export function AmigosView({
   const [username, setUsername] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
+  const { data: yo } = useSWR('me', getMe)
+  const miLink = yo && typeof window !== 'undefined' ? linkDeAmistad(yo.username) : ''
+
+  async function copiarMiLink() {
+    try {
+      await navigator.clipboard.writeText(miLink)
+      toast.exito('Link copiado. Pasáselo a quien quieras agregar.')
+    } catch {
+      toast.error('No se pudo copiar. Seleccioná el link y copialo a mano.')
+    }
+  }
 
   async function agregar(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+    // Se puede escribir el nombre de usuario o pegar el link de amistad de esa persona.
+    const destino = usernameDesdeTexto(username)
+    if (!destino) {
+      setError('Escribí un nombre de usuario o pegá un link de amistad de Kort.')
+      return
+    }
     setEnviando(true)
     try {
-      const { estado } = await enviarSolicitud(username.trim())
-      toast.exito(estado === 'amigos' ? `¡Ahora sos amigo de ${username.trim()}!` : 'Solicitud enviada.')
+      const { estado } = await enviarSolicitud(destino)
+      toast.exito(estado === 'amigos' ? `¡Ahora sos amigo de ${destino}!` : 'Solicitud enviada.')
       setUsername('')
       mutateAmigos()
       mutateSolicitudes()
@@ -343,14 +374,14 @@ export function AmigosView({
         {pestania === 'agregar' && (
           <form onSubmit={agregar} className="flex flex-col gap-3">
             <h2 className="font-semibold">Agregar amigo</h2>
-            <p className="text-sm text-muted-foreground">Escribí su nombre de usuario exacto.</p>
+            <p className="text-sm text-muted-foreground">Escribí su nombre de usuario exacto o pegá su link de amistad.</p>
             <div className="flex gap-2">
               <Input
                 autoFocus
-                aria-label="Nombre de usuario"
+                aria-label="Nombre de usuario o link de amistad"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="ej: ana"
+                placeholder="ej: ana  o  http://localhost:3000/amigo/ana"
               />
               <Boton type="submit" cargando={enviando} disabled={!username.trim()}>
                 <UserPlus className="size-4" aria-hidden />
@@ -358,6 +389,23 @@ export function AmigosView({
               </Boton>
             </div>
             <ErrorFormulario mensaje={error} />
+
+            <div className="mt-4 flex flex-col gap-2 rounded-xl border border-border bg-surface p-4">
+              <h3 className="flex items-center gap-2 text-sm font-semibold">
+                <Link2 className="size-4 text-primary" aria-hidden />
+                Tu link de amistad
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Mandale este link a quien quieras: al abrirlo, le aparece la opción de mandarte una solicitud.
+              </p>
+              <div className="flex gap-2">
+                <Input readOnly aria-label="Tu link de amistad" value={miLink} onFocus={(e) => e.currentTarget.select()} className="font-mono text-xs" />
+                <Boton type="button" variante="secundario" onClick={copiarMiLink} disabled={!miLink}>
+                  <Copy className="size-4" aria-hidden />
+                  Copiar
+                </Boton>
+              </div>
+            </div>
           </form>
         )}
 

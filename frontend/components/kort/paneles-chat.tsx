@@ -7,7 +7,7 @@
 
 import { useState } from 'react'
 import useSWR from 'swr'
-import { FileText, Search, X } from 'lucide-react'
+import { FileText, Play, Search, X } from 'lucide-react'
 import {
   buscarMensajes,
   getFijados,
@@ -223,6 +223,34 @@ export function MultimediaPanel({ servidorId, onCerrar }: { servidorId: number; 
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={urlArchivo(m.adjunto.url)} alt="" loading="lazy" className="size-full object-cover transition-transform hover:scale-105" />
+                </a>
+              ),
+          )}
+        </div>
+      ) : tipo === 'video' ? (
+        // Videos: el video mismo en chiquito; al tocarlo se abre grande.
+        <div className="grid grid-cols-2 gap-1.5">
+          {data.map(
+            (m) =>
+              m.adjunto && (
+                <a
+                  key={m.id}
+                  href={urlArchivo(m.adjunto.url)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={`De ${nombreVisible(m)} · ${horaMensaje(m.fecha)}`}
+                  className="group relative block aspect-video overflow-hidden rounded-lg border border-border bg-black"
+                >
+                  <video
+                    src={`${urlArchivo(m.adjunto.url)}#t=0.1`}
+                    muted
+                    playsInline
+                    preload="metadata"
+                    className="size-full object-cover transition-transform group-hover:scale-105"
+                  />
+                  <span className="absolute inset-0 m-auto flex size-9 items-center justify-center rounded-full bg-black/55 text-white transition-transform group-hover:scale-110">
+                    <Play className="size-4 fill-white" aria-hidden />
+                  </span>
                 </a>
               ),
           )}

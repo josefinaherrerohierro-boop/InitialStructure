@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { BarChart3, FileText, Mic, Paperclip, SendHorizontal, Smile, Square, X } from 'lucide-react'
+import { BarChart3, FileText, Mic, Paperclip, Play, SendHorizontal, Smile, Square, X } from 'lucide-react'
 import {
   mensajeDeError,
   subirArchivo,
@@ -160,6 +160,12 @@ export function Composer({
           {adjunto.tipo === 'imagen' ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={urlArchivo(adjunto.url)} alt="" className="size-14 rounded-lg object-cover" />
+          ) : adjunto.tipo === 'video' ? (
+            // El video mismo, en chiquito (#t=0.1: para que muestre un cuadro y no quede negro).
+            <span className="relative size-14 shrink-0 overflow-hidden rounded-lg bg-black">
+              <video src={`${urlArchivo(adjunto.url)}#t=0.1`} muted playsInline preload="metadata" className="size-full object-cover" />
+              <Play className="absolute inset-0 m-auto size-5 fill-white text-white drop-shadow" aria-hidden />
+            </span>
           ) : (
             <span className="flex size-14 items-center justify-center rounded-lg bg-elevated">
               <FileText className="size-6 text-primary" aria-hidden />

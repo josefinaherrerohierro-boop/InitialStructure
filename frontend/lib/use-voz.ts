@@ -29,6 +29,16 @@ const CONFIG_RTC: RTCConfiguration = { iceServers: [{ urls: 'stun:stun.l.google.
 const UMBRAL_HABLANDO = 0.02 // volumen a partir del cual consideramos que alguien habla
 
 export type EstadoVoz = 'desconectado' | 'conectando' | 'conectado'
+/**
+ * Dónde es la llamada: un canal de voz o un mensaje directo (directo: true,
+ * y el id es el de la otra persona).
+ */
+export type SalaVoz = { id: number; nombre: string; directo?: boolean }
+
+/** ¿Es la misma llamada? */
+export const mismaSala = (a: SalaVoz | null | undefined, b: SalaVoz | null | undefined) =>
+  !!a && !!b && a.id === b.id && !!a.directo === !!b.directo
+
 /** Un elemento de la pizarra. Las posiciones van de 0 a 1 (se ve igual en cualquier pantalla). */
 export type TipoTrazo = 'lapiz' | 'linea' | 'flecha' | 'rect' | 'elipse' | 'texto' | 'imagen'
 export type Trazo = {
@@ -104,7 +114,7 @@ function ponerPantalla(sender: RTCRtpSender, pista: MediaStreamTrack | null) {
 }
 
 export function useVoz() {
-  const [canal, setCanal] = useState<{ id: number; nombre: string } | null>(null)
+  const [canal, setCanal] = useState<SalaVoz | null>(null)
   const [estado, setEstado] = useState<EstadoVoz>('desconectado')
   const [participantes, setParticipantes] = useState<ParticipanteVoz[]>([]) // los demás (sin mí)
   const [silenciado, setSilenciado] = useState(false)
@@ -320,7 +330,7 @@ export function useVoz() {
   }, [limpiar])
 
   const entrar = useCallback(
-    async (nuevoCanal: { id: number; nombre: string }, yoId: number) => {
+    async (nuevoCanal: SalaVoz, yoId: number) => {
       salir()
       setError(null)
       setEstado('conectando')
@@ -340,7 +350,7 @@ export function useVoz() {
       medir(yoId, microfono.current)
 
       // 2. WebSocket de señalización.
-      const socket = new WebSocket(urlVoz(nuevoCanal.id))
+      const socket = new WebSocket(urlVoz(nuevoCanal.id, nuevoCanal.directo))
       ws.current = socket
 
       socket.onmessage = async (evento) => {

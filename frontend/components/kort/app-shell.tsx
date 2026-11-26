@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import useSWR, { SWRConfig } from 'swr'
-import { AtSign, Compass, Images, Menu, Moon, Newspaper, Pin, Search, Sun, Users, X } from 'lucide-react'
+import { AtSign, Compass, Images, Menu, MessageSquare, Moon, Newspaper, Phone, Pin, Search, Sun, Users, X } from 'lucide-react'
 import {
   ApiError,
   clearToken,
@@ -32,7 +32,9 @@ import {
   type Preferencias,
 } from '@/lib/apariencia'
 import { calcularPermisos } from '@/lib/kort'
-import { useVoz } from '@/lib/use-voz'
+import { mismaSala, useVoz } from '@/lib/use-voz'
+import { LlamadasEntrantes } from './llamadas-entrantes'
+import { BuscadorServidores } from './buscador-servidores'
 import { cn } from '@/lib/utils'
 import { AjustesUsuario } from './ajustes/ajustes-usuario'
 import { AccionesServidor, MenuUsuario, PestaniasServidores } from './barra-superior'
@@ -112,6 +114,14 @@ function AppShellInterno() {
   const [llamadaAmpliada, setLlamadaAmpliada] = useState(false)
   // Chat de voz: vive acá para que la llamada siga aunque mires otro canal.
   const voz = useVoz()
+  // En un mensaje directo: id de la persona cuya llamada estamos mirando (en vez del chat).
+  const [llamadaDmAbierta, setLlamadaDmAbierta] = useState<number | null>(null)
+  // Cuando termina una llamada por mensaje directo, volvemos al chat.
+  const estadoVozAnterior = useRef(voz.estado)
+  useEffect(() => {
+    if (estadoVozAnterior.current === 'conectado' && voz.estado !== 'conectado') setLlamadaDmAbierta(null)
+    estadoVozAnterior.current = voz.estado
+  }, [voz.estado])
 
   useEffect(() => {
     if (!getToken()) {
@@ -353,6 +363,12 @@ function AppShellInterno() {
   let encabezado: React.ReactNode
   let contenido: React.ReactNode
 
+  const claveVista = enExplorar
+    ? 'explorar'
+    : mostrarInicio
+      ? `inicio-${seleccionInicio.tipo}-${seleccionInicio.tipo === 'dm' ? `${seleccionInicio.usuario.id}-${llamadaDmAbierta === seleccionInicio.usuario.id}` : ''}`
+      : `servidor-${servidor?.id}-${herramienta ?? `canal-${canal?.id}`}`
+
   if (enExplorar) {
     encabezado = (
       <div className="flex flex-1 items-center gap-2">
@@ -371,7 +387,46 @@ function AppShellInterno() {
           <h1 className="truncate font-display text-[17px] font-bold hover:underline">{u.username}</h1>
         </button>
       )
-      contenido = yo && <DirectoPanel key={u.id} usuario={u} yo={yo} onVerPerfil={setPerfilAbierto} />
+      const salaDm = { id: u.id, nombre: u.username, directo: true }
+      const enLlamadaDm = mismaSala(voz.canal, salaDm)
+      const viendoLlamada = llamadaDmAbierta === u.id
+      encabezado = (
+        <>
+          {encabezado}
+          {viendoLlamada ? (
+            <button
+              type="button"
+              onClick={() => setLlamadaDmAbierta(null)}
+              className="flex shrink-0 items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-sm hover:bg-elevated"
+            >
+              <MessageSquare className="size-4" aria-hidden />
+              Ver chat
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setLlamadaDmAbierta(u.id)
+                if (!enLlamadaDm && yo) voz.entrar(salaDm, yo.id)
+              }}
+              className={cn(
+                'flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors',
+                enLlamadaDm ? 'bg-success text-white hover:bg-success/90' : 'bg-primary text-primary-foreground hover:bg-primary-hover',
+              )}
+            >
+              <Phone className="size-4" aria-hidden />
+              {enLlamadaDm ? 'Volver a la llamada' : 'Llamar'}
+            </button>
+          )}
+        </>
+      )
+      contenido =
+        yo &&
+        (viendoLlamada ? (
+          <VoicePanel key={`dm-${u.id}`} canal={salaDm} yo={yo} voz={voz} />
+        ) : (
+          <DirectoPanel key={u.id} usuario={u} yo={yo} onVerPerfil={setPerfilAbierto} />
+        ))
     } else if (seleccionInicio.tipo === 'feed') {
       encabezado = (
         <div className="flex flex-1 items-center gap-2">
@@ -519,6 +574,7 @@ function AppShellInterno() {
             onSeleccionar={seleccionarServidor}
             onReordenar={reordenarServidores}
           />
+          <BuscadorServidores servidores={servidores ?? []} onSeleccionar={seleccionarServidor} atajo />
           <AccionesServidor
             onCrear={() => setModal('crearServidor')}
             onUnirme={() => setModal('unirme')}
@@ -544,14 +600,15 @@ function AppShellInterno() {
         <div className="fixed inset-0 z-40 md:hidden">
           <button
             type="button"
-            className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
+            className="aparecer-fundido absolute inset-0 bg-black/50 backdrop-blur-[2px]"
             aria-label="Cerrar menú"
             onClick={() => setMenuAbierto(false)}
           />
-          <aside className="panel absolute inset-y-3 left-3 flex w-80 max-w-[85vw] flex-col overflow-hidden" aria-label="Navegación">
+          <aside className="panel aparecer-izquierda absolute inset-y-3 left-3 flex w-80 max-w-[85vw] flex-col overflow-hidden" aria-label="Navegación">
             <div className="flex items-center justify-between gap-2 border-b border-border p-3">
               {botonInicio}
-              <AccionesServidor
+              <BuscadorServidores servidores={servidores ?? []} onSeleccionar={seleccionarServidor} />
+          <AccionesServidor
             onCrear={() => setModal('crearServidor')}
             onUnirme={() => setModal('unirme')}
             onExplorar={abrirExplorar}
@@ -581,10 +638,25 @@ function AppShellInterno() {
         </div>
       )}
 
+      {/* Te están llamando por mensaje directo */}
+      {yo && (
+        <LlamadasEntrantes
+          voz={voz}
+          onAtender={(p) => {
+            abrirDirecto({ id: p.usuario_id, username: p.username, avatar_url: null, bio: null })
+            setLlamadaDmAbierta(p.usuario_id)
+            voz.entrar({ id: p.usuario_id, nombre: p.username, directo: true }, yo.id)
+          }}
+        />
+      )}
+
       {/* Mientras estás en una llamada (aunque mires otra cosa) */}
       <div className="fixed bottom-5 left-5 z-30 w-72 max-w-[calc(100vw-2.5rem)] [&>*]:shadow-[var(--sombra)] [&>*]:backdrop-blur">
         {/* Si ya estás mirando esa llamada, los controles están en pantalla: la barrita sobra. */}
-        {!(!mostrarInicio && !herramienta && canal?.tipo === 'voz' && voz.canal?.id === canal.id) && <VozBar voz={voz} />}
+        {!(!mostrarInicio && !herramienta && canal?.tipo === 'voz' && mismaSala(voz.canal, { id: canal.id, nombre: canal.nombre })) &&
+          !(mostrarInicio && seleccionInicio.tipo === 'dm' && llamadaDmAbierta === seleccionInicio.usuario.id && voz.canal?.directo) && (
+            <VozBar voz={voz} />
+          )}
       </div>
 
       {/* Paneles flotantes */}
@@ -618,13 +690,16 @@ function AppShellInterno() {
           ) : ampliada ? null : (
             encabezado
           )}
-          <div className="flex min-h-0 flex-1 flex-col">{contenido}</div>
+          {/* La clave cambia al ir a otra pestaña/canal/vista: así el contenido nuevo aparece animado. */}
+          <div key={claveVista} className="aparecer flex min-h-0 flex-1 flex-col">
+            {contenido}
+          </div>
         </main>
 
         {!mostrarInicio && servidor && panelContenido && !ampliada && (
           <>
-            <div className="panel hidden shrink-0 overflow-hidden lg:block">{panelContenido}</div>
-            <div className="panel fixed inset-y-3 right-3 z-30 overflow-hidden lg:hidden">{panelContenido}</div>
+            <div className="panel aparecer-lado hidden shrink-0 overflow-hidden lg:block">{panelContenido}</div>
+            <div className="panel aparecer-lado fixed inset-y-3 right-3 z-30 overflow-hidden lg:hidden">{panelContenido}</div>
           </>
         )}
       </div>

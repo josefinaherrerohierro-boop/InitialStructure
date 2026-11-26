@@ -3,6 +3,22 @@
 import { Download, FileText } from 'lucide-react'
 import { urlArchivo, type Adjunto } from '@/lib/api'
 
+/**
+ * Los videos y audios grabados con el navegador (.webm) no traen guardada su
+ * duración: el reproductor muestra un número que se va corrigiendo mientras
+ * avanza. Para saber la duración real, saltamos al final un instante y volvemos.
+ */
+export function arreglarDuracion(e: React.SyntheticEvent<HTMLMediaElement>) {
+  const medio = e.currentTarget
+  if (Number.isFinite(medio.duration)) return
+  const volver = () => {
+    medio.removeEventListener('timeupdate', volver)
+    medio.currentTime = 0
+  }
+  medio.addEventListener('timeupdate', volver)
+  medio.currentTime = 1e7
+}
+
 /** Muestra el archivo adjunto de un mensaje según su tipo. */
 export function AdjuntoView({ adjunto }: { adjunto: Adjunto }) {
   const url = urlArchivo(adjunto.url)
@@ -23,7 +39,7 @@ export function AdjuntoView({ adjunto }: { adjunto: Adjunto }) {
   }
   if (adjunto.tipo === 'video') {
     return (
-      <video src={url} controls preload="metadata" className="mt-1.5 max-h-80 w-[min(28rem,75vw)] rounded-lg border border-border">
+      <video src={url} controls preload="metadata" onLoadedMetadata={arreglarDuracion} className="mt-1.5 max-h-80 w-[min(28rem,75vw)] rounded-lg border border-border">
         Tu navegador no puede reproducir este video.
       </video>
     )
@@ -31,7 +47,7 @@ export function AdjuntoView({ adjunto }: { adjunto: Adjunto }) {
   if (adjunto.tipo === 'audio') {
     return (
       <div className="mt-1.5 w-72 max-w-[75vw] rounded-2xl border border-border bg-surface p-2">
-        <audio src={url} controls preload="metadata" className="h-9 w-full">
+        <audio src={url} controls preload="metadata" onLoadedMetadata={arreglarDuracion} className="h-9 w-full">
           Tu navegador no puede reproducir este audio.
         </audio>
       </div>

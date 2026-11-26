@@ -183,7 +183,7 @@ export function MenuUsuario({
         <span className="hidden max-w-28 truncate text-sm font-medium sm:inline">{usuario?.username}</span>
       </button>
       {abierto && usuario && (
-        <div role="menu" className="panel absolute top-full right-0 z-50 mt-2 w-64 p-2">
+        <div role="menu" className="panel aparecer-arriba absolute top-full right-0 z-50 mt-2 w-64 p-2">
           <div className="flex items-center gap-3 px-2 py-2">
             <Avatar nombre={usuario.username} url={usuario.avatar_url} />
             <div className="min-w-0">

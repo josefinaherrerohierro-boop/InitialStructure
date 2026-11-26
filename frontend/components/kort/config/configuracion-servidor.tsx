@@ -123,6 +123,7 @@ export function ConfiguracionServidor({
           </div>
 
           <Proveedor>
+          <div key={actual} className="aparecer">
           {actual === 'general' && (
             <GeneralTab
               servidor={servidor}
@@ -147,6 +148,7 @@ export function ConfiguracionServidor({
           )}
           {actual === 'invitaciones' && <InvitacionesTab servidorId={servidor.id} permisos={permisos} miId={miId} />}
           {actual === 'estadisticas' && <EstadisticasTab servidorId={servidor.id} />}
+          </div>
           </Proveedor>
         </div>
       </main>

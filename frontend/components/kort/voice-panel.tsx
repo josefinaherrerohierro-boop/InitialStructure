@@ -17,8 +17,8 @@ import {
   VideoOff,
   Volume2,
 } from 'lucide-react'
-import { getParticipantesVoz, type Canal, type ParticipanteVoz, type Usuario } from '@/lib/api'
-import type { Voz } from '@/lib/use-voz'
+import { getParticipantesDirecto, getParticipantesVoz, type ParticipanteVoz, type Usuario } from '@/lib/api'
+import { mismaSala, type SalaVoz, type Voz } from '@/lib/use-voz'
 import { cn } from '@/lib/utils'
 import { JuegosLlamada } from './juegos-llamada'
 import { Pizarra } from './pizarra'
@@ -59,7 +59,8 @@ export function VoicePanel({
   ampliada = false,
   onAmpliar,
 }: {
-  canal: Canal
+  /** Un canal de voz o, con directo: true, un mensaje directo (id = la otra persona). */
+  canal: SalaVoz
   yo: Usuario
   voz: Voz
   /** Ampliada = se ocultan los paneles de los costados para que la llamada ocupe todo. */
@@ -68,14 +69,18 @@ export function VoicePanel({
 }) {
   const [pestania, setPestania] = useState<Pestania>('llamada')
   const [destacado, setDestacado] = useState<string | null>(null)
-  const enEsteCanal = voz.canal?.id === canal.id
+  const enEsteCanal = mismaSala(voz.canal, canal)
   const conectado = enEsteCanal && voz.estado === 'conectado'
 
   // Mientras no estoy adentro, muestro quiénes están conectados (se actualiza cada 3 s).
-  const { data: presentes } = useSWR(!conectado ? ['voz', canal.id] : null, () => getParticipantesVoz(canal.id), {
+  const { data: presentes } = useSWR(
+    !conectado ? ['voz', canal.directo ? 'directo' : 'canal', canal.id] : null,
+    () => (canal.directo ? getParticipantesDirecto(canal.id) : getParticipantesVoz(canal.id)),
+    {
     refreshInterval: 3000,
     onError: () => {},
-  })
+    },
+  )
 
   if (conectado) {
     const yoComoParticipante: ParticipanteVoz = {
@@ -192,6 +197,7 @@ export function VoicePanel({
           )}
         </div>
 
+        <div key={pestania} className="aparecer flex min-h-0 flex-1 flex-col">
         {pestania === 'llamada' &&
           (principal ? (
             // Algo destacado (por ejemplo, una pantalla compartida): ocupa casi todo y
@@ -220,6 +226,7 @@ export function VoicePanel({
             onLimpiar={voz.limpiarPizarra}
           />}
         {pestania === 'juegos' && <JuegosLlamada voz={voz} miId={yo.id} />}
+        </div>
 
         <div className="flex flex-col items-center gap-3 border-t border-border p-4">
           {voz.participantes.length === 0 && pestania === 'llamada' && (
@@ -273,8 +280,8 @@ export function VoicePanel({
           <Volume2 className="size-7" aria-hidden />
         </span>
         <div className="flex flex-col gap-1">
-          <h2 className="text-lg font-semibold">{canal.nombre}</h2>
-          <p className="text-sm text-muted-foreground">Canal de voz y video</p>
+          <h2 className="text-lg font-semibold">{canal.directo ? `Llamada con ${canal.nombre}` : canal.nombre}</h2>
+          <p className="text-sm text-muted-foreground">{canal.directo ? 'Mensaje directo · voz y video' : 'Canal de voz y video'}</p>
         </div>
 
         {presentes && presentes.length > 0 ? (
@@ -290,17 +297,21 @@ export function VoicePanel({
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-muted-foreground">No hay nadie conectado todavía.</p>
+          <p className="text-sm text-muted-foreground">
+            {canal.directo ? `Cuando entres, a ${canal.nombre} le va a aparecer que lo estás llamando.` : 'No hay nadie conectado todavía.'}
+          </p>
         )}
 
         {enEsteCanal && <ErrorFormulario mensaje={voz.error} />}
         {enOtroCanal && (
-          <p className="text-sm text-muted-foreground">Ahora estás en {voz.canal?.nombre}. Si entrás acá, salís de ese canal.</p>
+          <p className="text-sm text-muted-foreground">
+            Ahora estás en {voz.canal?.directo ? `la llamada con ${voz.canal.nombre}` : voz.canal?.nombre}. Si entrás acá, salís de esa llamada.
+          </p>
         )}
 
-        <Boton cargando={conectando} onClick={() => voz.entrar({ id: canal.id, nombre: canal.nombre }, yo.id)}>
+        <Boton cargando={conectando} onClick={() => voz.entrar(canal, yo.id)}>
           <Mic className="size-4" aria-hidden />
-          Entrar a la llamada
+          {canal.directo ? (presentes?.length ? 'Atender' : 'Llamar') : 'Entrar a la llamada'}
         </Boton>
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Headphones className="size-3.5" aria-hidden />
@@ -318,8 +329,8 @@ export function VozBar({ voz }: { voz: Voz }) {
     <div className="flex items-center gap-2 rounded-xl border border-success/30 bg-success/10 p-2.5">
       <Volume2 className="size-4 shrink-0 text-success" aria-hidden />
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-medium text-success">Conectado a la voz</p>
-        <p className="truncate text-xs text-muted-foreground">{voz.canal.nombre}</p>
+        <p className="text-xs font-medium text-success">{voz.canal.directo ? 'En llamada' : 'Conectado a la voz'}</p>
+        <p className="truncate text-xs text-muted-foreground">{voz.canal.directo ? `con ${voz.canal.nombre}` : voz.canal.nombre}</p>
       </div>
       <button
         type="button"

@@ -96,11 +96,13 @@ export function AjustesUsuario({
           </div>
 
           <Proveedor>
+          <div key={actual} className="aparecer">
           {actual === 'perfil' && <PerfilTab usuario={usuario} onActualizado={onActualizado} />}
           {actual === 'cuenta' && <CuentaTab key={`${usuario.username}-${usuario.email}`} usuario={usuario} onActualizado={onActualizado} />}
           {actual === 'apariencia' && apariencia}
           {actual === 'historial' && <HistorialTab />}
           {actual === 'wrapped' && wrapped}
+          </div>
           </Proveedor>
         </div>
       </main>

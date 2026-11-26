@@ -190,3 +190,80 @@
     scrollbar-color: var(--border) transparent;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Animaciones simples al abrir cosas (pestañas, paneles, menús y ventanas).
+   Cortas y suaves; si la compu tiene "reducir movimiento", no se animan.
+   --------------------------------------------------------------------------- */
+@keyframes kort-aparecer {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.99);
+  }
+}
+@keyframes kort-aparecer-arriba {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+}
+@keyframes kort-aparecer-derecha {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+@keyframes kort-aparecer-izquierda {
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+}
+@keyframes kort-fundido {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes kort-ventana {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+}
+
+.aparecer {
+  animation: kort-aparecer 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+.aparecer-arriba {
+  animation: kort-aparecer-arriba 0.18s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+  transform-origin: top right;
+}
+.aparecer-lado {
+  animation: kort-aparecer-derecha 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+.aparecer-izquierda {
+  animation: kort-aparecer-izquierda 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+.aparecer-fundido {
+  animation: kort-fundido 0.2s ease-out backwards;
+}
+
+/* Todas las ventanas (crear servidor, configuración, perfil, etc.). */
+dialog[open] {
+  animation: kort-ventana 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+dialog[open]::backdrop {
+  animation: kort-fundido 0.2s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aparecer,
+  .aparecer-arriba,
+  .aparecer-lado,
+  .aparecer-izquierda,
+  .aparecer-fundido,
+  dialog[open],
+  dialog[open]::backdrop {
+    animation: none;
+  }
+}

@@ -30,9 +30,10 @@ from src.repositories.canal_repository import CanalRepository
 from src.repositories.usuario_repository import UsuarioRepository
 from src.services.archivo_service import ArchivoService
 from src.services.juegos_service import NOMBRES, PUNTOS_POR_GANAR, Juego, JugadaInvalida, crear_juego
+from src.services.mensaje_directo_service import MensajeDirectoService
 from src.services.organizacion_service import ScoreboardService
 from src.services.permisos_service import PermisosService
-from src.utils.errors import AppError, NotFoundError, UnauthorizedError, UnprocessableError
+from src.utils.errors import AppError, ForbiddenError, NotFoundError, UnauthorizedError, UnprocessableError
 from src.utils.jwt import decode_token
 
 log = logging.getLogger("kort")
@@ -60,9 +61,15 @@ class Participante:
         }
 
 
+def clave_directo(a: int, b: int) -> str:
+    """Las llamadas en mensajes directos usan una sala por par de personas."""
+    return f"dm:{min(a, b)}:{max(a, b)}"
+
+
 @dataclass
 class Sala:
-    servidor_id: int
+    # None en las llamadas de mensajes directos (no hay servidor ni scoreboard).
+    servidor_id: int | None
     participantes: dict[int, Participante] = field(default_factory=dict)
     trazos: list[dict] = field(default_factory=list)  # la pizarra
     juego: Juego | None = None
@@ -135,17 +142,18 @@ class SalasDeVoz:
     """Guarda quién está en cada canal de voz, su pizarra y su juego, y
     reenvía los mensajes de señalización.
 
-    Estructura: { canal_id: Sala }
+    Estructura: { clave: Sala }. La clave es el id del canal de voz o, en las
+    llamadas de mensajes directos, "dm:<id menor>:<id mayor>".
     """
 
     def __init__(self):
-        self.salas: dict[int, Sala] = {}
+        self.salas: dict[int | str, Sala] = {}
 
     def participantes(self, canal_id: int) -> list[Participante]:
         sala = self.salas.get(canal_id)
         return list(sala.participantes.values()) if sala else []
 
-    async def entrar(self, canal_id: int, servidor_id: int, nuevo: Participante) -> None:
+    async def entrar(self, canal_id: int | str, servidor_id: int | None, nuevo: Participante) -> None:
         sala = self.salas.setdefault(canal_id, Sala(servidor_id=servidor_id))
 
         # Si la misma persona ya estaba conectada (por ejemplo, desde otra
@@ -272,7 +280,7 @@ class SalasDeVoz:
         await self._difundir(canal_id, {"tipo": "juego", "juego": juego.publico() if juego else None})
 
         # ¿Terminó con un ganador? Le sumamos puntos en el scoreboard del servidor.
-        if juego and accion == "jugar" and juego.estado == "terminado" and juego.ganador is not None:
+        if juego and accion == "jugar" and juego.estado == "terminado" and juego.ganador is not None and sala.servidor_id:
             puntos = PUNTOS_POR_GANAR[juego.tipo]
             try:
                 await asyncio.to_thread(
@@ -280,6 +288,18 @@ class SalasDeVoz:
                 )
             except Exception:
                 log.exception("No se pudieron sumar los puntos del juego")
+
+    def llamadas_entrantes(self, usuario_id: int) -> list[Participante]:
+        """Quiénes me están llamando por mensaje directo: hay alguien en nuestra
+        sala y yo todavía no entré."""
+        llamando = []
+        for clave, sala in self.salas.items():
+            if not (isinstance(clave, str) and clave.startswith("dm:")):
+                continue
+            ids = [int(x) for x in clave.split(":")[1:]]
+            if usuario_id in ids and usuario_id not in sala.participantes:
+                llamando.extend(sala.participantes.values())
+        return llamando
 
     # ---------- Envío de mensajes ----------
     async def _difundir(self, canal_id: int, mensaje: dict, excepto: int | None = None) -> None:
@@ -307,6 +327,7 @@ class VozService:
         self.canales = CanalRepository(db)
         self.usuarios = UsuarioRepository(db)
         self.permisos = PermisosService(db)
+        self.directos = MensajeDirectoService(db)
 
     def autenticar(self, token: str) -> Usuario:
         """Los WebSockets del navegador no pueden mandar el header Authorization,
@@ -328,6 +349,25 @@ class VozService:
         # Solo miembros no baneados del servidor del canal.
         self.permisos.exigir_miembro(canal.servidor_id, usuario_id)
         return canal
+
+    def validar_directo(self, otro_id: int, actual_id: int) -> Usuario:
+        """Llamar por mensaje directo: con las mismas reglas que para escribirle."""
+        if otro_id == actual_id:
+            raise UnprocessableError("No te podés llamar a vos mismo")
+        otro = self.usuarios.find_by_id(otro_id)
+        if otro is None:
+            raise NotFoundError("Usuario no encontrado")
+        if not self.directos.puede_escribir(actual_id, otro_id):
+            raise ForbiddenError("Solo podés llamar a tus amigos o a gente de tus servidores")
+        return otro
+
+    def participantes_directo(self, otro_id: int, actual_id: int) -> list[ParticipanteVozDTO]:
+        self.validar_directo(otro_id, actual_id)
+        return [ParticipanteVozDTO(**p.resumen()) for p in salas_de_voz.participantes(clave_directo(actual_id, otro_id))]
+
+    @staticmethod
+    def llamadas_entrantes(actual_id: int) -> list[ParticipanteVozDTO]:
+        return [ParticipanteVozDTO(**p.resumen()) for p in salas_de_voz.llamadas_entrantes(actual_id)]
 
     def participantes(self, canal_id: int, actual_id: int) -> list[ParticipanteVozDTO]:
         self.validar_ingreso(canal_id, actual_id)

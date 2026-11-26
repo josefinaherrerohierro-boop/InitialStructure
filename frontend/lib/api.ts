@@ -375,10 +375,17 @@ export type ParticipanteVoz = {
 export const getParticipantesVoz = (canalId: number) => request<ParticipanteVoz[]>(`/canales/${canalId}/voz`)
 
 /** Dirección del WebSocket de señalización: http → ws (y https → wss). */
-export function urlVoz(canalId: number): string {
+export function urlVoz(id: number, directo = false): string {
   const token = encodeURIComponent(getToken() ?? '')
-  return `${API_URL.replace(/^http/, 'ws')}/ws/voz/${canalId}?token=${token}`
+  // directo: llamada por mensaje directo (el id es el de la otra persona).
+  return `${API_URL.replace(/^http/, 'ws')}/ws/${directo ? 'voz-directo' : 'voz'}/${id}?token=${token}`
 }
+
+/** Quién está en la llamada por mensaje directo con esa persona. */
+export const getParticipantesDirecto = (otroId: number) => request<ParticipanteVoz[]>(`/mensajes-directos/${otroId}/llamada`)
+
+/** Quién me está llamando ahora por mensaje directo. */
+export const getLlamadasEntrantes = () => request<ParticipanteVoz[]>('/llamadas/entrantes')
 
 // ---------------------------------------------------------------------------
 // Archivos (imágenes, audios, videos...) y chat enriquecido

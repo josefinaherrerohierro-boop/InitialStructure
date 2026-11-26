@@ -36,6 +36,7 @@ import {
   Trophy,
 } from 'lucide-react'
 import {
+  borrarCanal,
   getMiMembresia,
   getParticipantesVoz,
   mensajeDeError,
@@ -48,7 +49,8 @@ import type { Permisos } from '@/lib/kort'
 import { cn } from '@/lib/utils'
 import { Carril } from './carril'
 import { useToast } from './toast-provider'
-import { Avatar } from './ui'
+import { Modal } from './modal'
+import { Avatar, Boton } from './ui'
 
 export type Herramienta = 'publicaciones' | 'calendario' | 'tareas' | 'scoreboard'
 
@@ -200,6 +202,7 @@ export function SeccionesServidor({
   onCanal,
   onVista,
   onCrearCanal,
+  onCanalesCambiados,
 }: {
   servidorId: number
   canales: Canal[] | undefined
@@ -210,9 +213,43 @@ export function SeccionesServidor({
   onCanal: (id: number) => void
   onVista: (v: VistaServidor) => void
   onCrearCanal: () => void
+  /** Después de borrar un canal desde "Organizar" (para volver a pedir la lista). */
+  onCanalesCambiados?: () => void
 }) {
   const toast = useToast()
   const vertical = orientacion === 'vertical'
+  const [aBorrar, setABorrar] = useState<Canal | null>(null)
+  const [borrandoCanal, setBorrandoCanal] = useState(false)
+
+  async function confirmarBorrado() {
+    if (!aBorrar) return
+    setBorrandoCanal(true)
+    try {
+      await borrarCanal(aBorrar.id)
+      toast.exito(`Borraste ${aBorrar.tipo === 'voz' ? 'la sala' : 'el canal'} ${aBorrar.nombre}.`)
+      setABorrar(null)
+      onCanalesCambiados?.()
+    } catch (err) {
+      toast.error(mensajeDeError(err))
+    } finally {
+      setBorrandoCanal(false)
+    }
+  }
+
+  /** Tachito para borrar un canal (solo moderadores), en el modo Organizar. */
+  const botonBorrar = (item: Item) =>
+    permisos.esModerador &&
+    item.tipo === 'canal' && (
+      <button
+        type="button"
+        onClick={() => setABorrar(item.canal)}
+        className="rounded-full p-1 text-muted-foreground hover:bg-destructive/15 hover:text-destructive"
+        aria-label={`Borrar ${item.canal.tipo === 'voz' ? 'la sala' : 'el canal'} ${item.canal.nombre}`}
+        title="Borrar para todos"
+      >
+        <Trash2 className="size-3.5" />
+      </button>
+    )
   const { data: membresia, mutate } = useSWR(['mi-membresia', servidorId], () => getMiMembresia(servidorId))
   const [organizando, setOrganizando] = useState(false)
   // Mientras se organiza, se trabaja sobre un borrador que se ve al instante.
@@ -571,6 +608,7 @@ export function SeccionesServidor({
                             <button type="button" onClick={() => sacarDeCarpeta(clave)} className={botonMini} aria-label={`Sacar ${nombreDe(h)} de la carpeta`} title="Sacar de la carpeta">
                               <FolderOutput className="size-3.5" />
                             </button>
+                            {botonBorrar(h)}
                           </li>
                         )
                       })}
@@ -608,6 +646,7 @@ export function SeccionesServidor({
                     <FolderInput className="size-3.5" />
                   </button>
                 )}
+                {botonBorrar(e.item)}
               </div>
             )
           })}
@@ -751,6 +790,22 @@ export function SeccionesServidor({
       <div className={cn(vertical ? 'flex h-full flex-col overflow-y-auto p-3' : 'pt-1')}>
         {renderOrganizar()}
         {menus}
+        <Modal
+          abierto={aBorrar !== null}
+          onCerrar={() => setABorrar(null)}
+          titulo={`¿Borrar ${aBorrar?.tipo === 'voz' ? 'la sala' : 'el canal'} ${aBorrar?.nombre ?? ''}?`}
+          descripcion="Se borra para todos los miembros del servidor, con todos sus mensajes. No se puede deshacer."
+        >
+          <div className="flex justify-end gap-2">
+            <Boton variante="secundario" onClick={() => setABorrar(null)}>
+              Cancelar
+            </Boton>
+            <Boton variante="peligro" cargando={borrandoCanal} onClick={confirmarBorrado}>
+              <Trash2 className="size-4" aria-hidden />
+              Borrar
+            </Boton>
+          </div>
+        </Modal>
       </div>
     )
   }

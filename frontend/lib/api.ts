@@ -17,6 +17,7 @@ export type Servidor = {
   duenio_id: number
   fecha_creacion: string
   expira_en?: string | null
+  icono_url?: string | null
 }
 export type TipoCanal = 'texto' | 'voz'
 export type Canal = {
@@ -255,7 +256,7 @@ export type Crecimiento = {
 // Servidor (solo el dueño)
 export const actualizarServidor = (
   id: number,
-  datos: { nombre?: string; duracion_horas?: number; hacer_permanente?: boolean },
+  datos: { nombre?: string; duracion_horas?: number; hacer_permanente?: boolean; icono_url?: string; quitar_icono?: boolean },
 ) =>
   request<Servidor>(`/servidores/${id}`, { method: 'PATCH', body: datos })
 
@@ -415,7 +416,17 @@ export type MensajeDirecto = {
   leido: boolean
   adjunto: Adjunto | null
 }
-export type Conversacion = { usuario: UsuarioResumen; ultimo_mensaje: MensajeDirecto; no_leidos: number }
+export type Conversacion = {
+  usuario: UsuarioResumen
+  /** null si está fijada pero todavía no se escribieron. */
+  ultimo_mensaje: MensajeDirecto | null
+  no_leidos: number
+  fijada: boolean
+}
+
+/** Fija conversaciones arriba (en este orden). Reemplaza la lista entera. */
+export const fijarConversaciones = (usuarioIds: number[]) =>
+  request<Conversacion[]>('/mensajes-directos/fijados', { method: 'PUT', body: { usuario_ids: usuarioIds } })
 
 /** Un mensaje directo con la forma de un mensaje de canal (para reusar la vista del chat). */
 export function directoComoMensaje(m: MensajeDirecto): Mensaje {
@@ -497,6 +508,7 @@ export type Flyer = {
   codigo: string
   servidor_id: number
   servidor_nombre: string
+  servidor_icono_url?: string | null
   miembros: number
   vigente: boolean
   soy_miembro: boolean

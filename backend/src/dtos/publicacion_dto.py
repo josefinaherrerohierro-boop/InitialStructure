@@ -11,6 +11,7 @@ class FlyerDTO(BaseModel):
     codigo: str
     servidor_id: int
     servidor_nombre: str
+    servidor_icono_url: str | None = None
     miembros: int
     vigente: bool  # False si la invitación venció o se quedó sin usos
     soy_miembro: bool

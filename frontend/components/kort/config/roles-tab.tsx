@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useCambiosPendientes } from '../cambios-pendientes'
 import { Pencil, Shield, Trash2 } from 'lucide-react'
 import { actualizarRol, borrarRol, crearRol, mensajeDeError, type DatosRol, type Rol } from '@/lib/api'
 import { useToast } from '../toast-provider'
@@ -21,6 +22,7 @@ export function RolesTab({
 }) {
   const toast = useToast()
   const [nombre, setNombre] = useState('')
+  useCambiosPendientes(nombre.trim() !== '')
   const [permisos, setPermisos] = useState({ puede_escribir: true, puede_moderar: false, puede_invitar: false })
   const [error, setError] = useState<string | null>(null)
   const [cargando, setCargando] = useState(false)
@@ -93,6 +95,7 @@ function FilaRol({ rol, onActualizar }: { rol: Rol; onActualizar: () => void }) 
   const toast = useToast()
   const [editando, setEditando] = useState(false)
   const [nombre, setNombre] = useState(rol.nombre)
+  useCambiosPendientes(editando && nombre.trim() !== rol.nombre)
   const [borrando, setBorrando] = useState(false)
   const esEveryone = rol.nombre === EVERYONE
 

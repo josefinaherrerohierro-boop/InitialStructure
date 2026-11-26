@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { actualizarMiCuenta, borrarMiCuenta, clearToken, mensajeDeError, type Usuario } from '@/lib/api'
+import { useCambiosPendientes } from '../cambios-pendientes'
 import { Confirmar, Seccion } from '../config/confirmar'
 import { useToast } from '../toast-provider'
 import { Boton, Campo, ErrorFormulario, Input } from '../ui'
@@ -14,6 +15,7 @@ export function CuentaTab({ usuario, onActualizado }: { usuario: Usuario; onActu
   const [email, setEmail] = useState(usuario.email)
   const [username, setUsername] = useState(usuario.username)
   const [password, setPassword] = useState('')
+  useCambiosPendientes(email.trim() !== usuario.email || username.trim() !== usuario.username || password !== '')
   const [error, setError] = useState<string | null>(null)
   const [cargando, setCargando] = useState(false)
   const [borrando, setBorrando] = useState(false)

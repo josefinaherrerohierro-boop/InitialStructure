@@ -214,6 +214,7 @@ class PublicacionService:
             codigo=invitacion.codigo,
             servidor_id=servidor.id,
             servidor_nombre=servidor.nombre,
+            servidor_icono_url=servidor.icono_url,
             miembros=self.miembros.contar_activos(servidor.id),
             vigente=not vencido and invitacion.fecha_vencimiento > ahora() and invitacion.usos < invitacion.usos_maximos,
             soy_miembro=self.permisos.es_miembro(servidor.id, actual_id),

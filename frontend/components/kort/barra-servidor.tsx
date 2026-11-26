@@ -29,6 +29,7 @@ export function BarraServidor({
   onCrearCanal,
   onInvitar,
   onConfigurar,
+  onCanalesCambiados,
 }: {
   servidor: Servidor
   canales: Canal[] | undefined
@@ -45,6 +46,7 @@ export function BarraServidor({
   onCrearCanal: () => void
   onInvitar: () => void
   onConfigurar: () => void
+  onCanalesCambiados?: () => void
 }) {
   const botonIcono =
     'flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-elevated hover:text-foreground'
@@ -53,7 +55,7 @@ export function BarraServidor({
   return (
     <div className="flex shrink-0 flex-col gap-2 border-b border-border px-4 pt-3 pb-2">
       <div className="flex items-center gap-3">
-        <Avatar nombre={servidor.nombre} tamanio="lg" className="rounded-2xl" />
+        <Avatar nombre={servidor.nombre} url={servidor.icono_url} tamanio="lg" className="rounded-2xl" />
         <div className="min-w-0 flex-1">
           <h1 className="truncate font-display text-xl font-extrabold tracking-tight">{servidor.nombre}</h1>
           <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -102,6 +104,7 @@ export function BarraServidor({
           onCanal={onCanal}
           onVista={onVista}
           onCrearCanal={onCrearCanal}
+          onCanalesCambiados={onCanalesCambiados}
         />
       </div>
     </div>

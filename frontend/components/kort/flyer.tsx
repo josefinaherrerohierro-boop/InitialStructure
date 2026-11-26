@@ -41,7 +41,7 @@ export function TarjetaFlyer({ flyer, oscura = false }: { flyer: Flyer; oscura?:
         oscura ? 'border-white/20 bg-black/45 text-white backdrop-blur' : 'border-primary/30 bg-primary/8',
       )}
     >
-      <Avatar nombre={flyer.servidor_nombre} tamanio="lg" className="rounded-2xl" />
+      <Avatar nombre={flyer.servidor_nombre} url={flyer.servidor_icono_url} tamanio="lg" className="rounded-2xl" />
       <div className="min-w-0 flex-1">
         <p className={cn('flex items-center gap-1 text-[11px] font-semibold', oscura ? 'text-white/80' : 'text-primary')}>
           <Megaphone className="size-3" aria-hidden />

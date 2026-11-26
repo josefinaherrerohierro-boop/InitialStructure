@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import useSWR, { SWRConfig } from 'swr'
-import { AtSign, House, Images, Menu, Moon, Newspaper, Pin, Search, Sun, Users, X } from 'lucide-react'
+import { AtSign, Images, Menu, Moon, Newspaper, Pin, Search, Sun, Users, X } from 'lucide-react'
 import {
   ApiError,
   clearToken,
@@ -295,28 +295,22 @@ function AppShellInterno() {
             ? <MultimediaPanel servidorId={servidor.id} onCerrar={() => setPanel(null)} />
             : null
 
-  /** Botón "Inicio" con el globito de pendientes (se usa arriba y en el menú del celular). */
+  /** El logo es el botón de Inicio (con el globito de pendientes). */
   const botonInicio = (
     <button
       type="button"
       onClick={() => irAInicio()}
       aria-current={mostrarInicio ? 'page' : undefined}
+      aria-label={`Inicio${pendientesInicio > 0 ? `, ${pendientesInicio} sin ver` : ''}`}
+      title="Inicio: amigos, mensajes directos y publicaciones"
       className={cn(
-        'flex h-9 shrink-0 items-center gap-2 rounded-full border px-3.5 text-sm transition-all',
-        mostrarInicio
-          ? 'border-primary bg-primary font-semibold text-primary-foreground shadow-[var(--sombra)]'
-          : 'border-border bg-surface text-foreground hover:border-primary/50',
+        'relative flex h-10 shrink-0 items-center rounded-full py-1 pr-3.5 pl-1.5 transition-all',
+        mostrarInicio ? 'bg-surface shadow-[var(--sombra)] ring-2 ring-primary' : 'hover:bg-surface/70',
       )}
     >
-      <House className="size-4" aria-hidden />
-      Inicio
+      <Logo className="text-xl" />
       {pendientesInicio > 0 && (
-        <span
-          className={cn(
-            'flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold',
-            mostrarInicio ? 'bg-primary-foreground text-primary' : 'bg-primary text-primary-foreground',
-          )}
-        >
+        <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground ring-2 ring-background">
           {pendientesInicio > 99 ? '99+' : pendientesInicio}
         </span>
       )}
@@ -398,6 +392,7 @@ function AppShellInterno() {
         onConfigurar={() => setModal('configuracion')}
         orientacion={disposicion}
         onCambiarOrientacion={(o) => cambiarPreferencias({ disposicion: o })}
+        onCanalesCambiados={() => mutateCanales()}
         acciones={
           <>
             {canal?.tipo === 'texto' && !herramienta && (
@@ -440,7 +435,13 @@ function AppShellInterno() {
           </div>
         </div>
       ) : herramienta === 'calendario' ? (
-        <CalendarioView key={servidor.id} servidorId={servidor.id} miId={yo.id} permisos={permisos} />
+        <CalendarioView
+          key={servidor.id}
+          servidorId={servidor.id}
+          miId={yo.id}
+          permisos={permisos}
+          onVerTareas={() => seleccionarHerramienta('tareas')}
+        />
       ) : herramienta === 'tareas' ? (
         <TareasView key={servidor.id} servidorId={servidor.id} miId={yo.id} miembros={miembros ?? []} permisos={permisos} />
       ) : (
@@ -482,10 +483,9 @@ function AppShellInterno() {
         >
           <Menu className="size-5" />
         </button>
-        <Logo className="shrink-0 text-xl" />
+        {botonInicio}
         <div className="hidden h-6 w-px shrink-0 bg-border md:block" aria-hidden />
         <div className="hidden min-w-0 flex-1 items-center gap-1.5 md:flex">
-          {botonInicio}
           <PestaniasServidores
             servidores={servidores}
             seleccionadoId={servidor?.id}
@@ -565,6 +565,7 @@ function AppShellInterno() {
               onCanal={seleccionarCanal}
               onVista={seleccionarHerramienta}
               onCrearCanal={() => setModal('crearCanal')}
+              onCanalesCambiados={() => mutateCanales()}
             />
           </aside>
         )}

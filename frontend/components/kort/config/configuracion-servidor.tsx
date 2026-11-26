@@ -12,6 +12,7 @@ import { GeneralTab } from './general-tab'
 import { InvitacionesTab } from './invitaciones-tab'
 import { MiembrosTab } from './miembros-tab'
 import { RolesTab } from './roles-tab'
+import { useCerrarConAviso } from '../cambios-pendientes'
 
 type Pestania = 'general' | 'canales' | 'roles' | 'miembros' | 'invitaciones' | 'estadisticas'
 
@@ -51,6 +52,7 @@ export function ConfiguracionServidor({
   ]
   const visibles = pestanias.filter((p) => p.visible)
   const [actual, setActual] = useState<Pestania>('general')
+  const { Proveedor, intentar, aviso } = useCerrarConAviso()
 
   // Si se pierden permisos (por ejemplo, después de transferir el servidor),
   // volvemos a "General".
@@ -61,11 +63,11 @@ export function ConfiguracionServidor({
   // Cerrar con Escape
   useEffect(() => {
     function alApretar(e: KeyboardEvent) {
-      if (e.key === 'Escape') onCerrar()
+      if (e.key === 'Escape') intentar(onCerrar)
     }
     window.addEventListener('keydown', alApretar)
     return () => window.removeEventListener('keydown', alApretar)
-  }, [onCerrar])
+  }, [onCerrar, intentar])
 
   const titulo = visibles.find((p) => p.id === actual)?.etiqueta ?? 'General'
 
@@ -78,7 +80,7 @@ export function ConfiguracionServidor({
     >
       <nav className="flex shrink-0 flex-col gap-4 border-b border-border bg-surface p-4 md:w-64 md:border-r md:border-b-0">
         <div className="flex items-center gap-3">
-          <Avatar nombre={servidor.nombre} />
+          <Avatar nombre={servidor.nombre} url={servidor.icono_url} />
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">{servidor.nombre}</p>
             <p className="text-xs text-muted-foreground">Configuración</p>
@@ -89,7 +91,7 @@ export function ConfiguracionServidor({
             <li key={id}>
               <button
                 type="button"
-                onClick={() => setActual(id)}
+                onClick={() => id !== actual && intentar(() => setActual(id))}
                 aria-current={actual === id ? 'page' : undefined}
                 className={cn(
                   'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm whitespace-nowrap transition-colors',
@@ -112,7 +114,7 @@ export function ConfiguracionServidor({
             <h2 className="text-xl font-semibold">{titulo}</h2>
             <button
               type="button"
-              onClick={onCerrar}
+              onClick={() => intentar(onCerrar)}
               className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-sm text-muted-foreground hover:bg-elevated hover:text-foreground"
             >
               <X className="size-4" aria-hidden />
@@ -120,6 +122,7 @@ export function ConfiguracionServidor({
             </button>
           </div>
 
+          <Proveedor>
           {actual === 'general' && (
             <GeneralTab
               servidor={servidor}
@@ -144,8 +147,10 @@ export function ConfiguracionServidor({
           )}
           {actual === 'invitaciones' && <InvitacionesTab servidorId={servidor.id} permisos={permisos} miId={miId} />}
           {actual === 'estadisticas' && <EstadisticasTab servidorId={servidor.id} />}
+          </Proveedor>
         </div>
       </main>
+      {aviso}
     </div>
   )
 }

@@ -9,6 +9,7 @@
 -- poder volver a correr el script desde cero. Se pierden los datos.
 -- =====================================================================
 
+DROP TABLE IF EXISTS directos_fijados        CASCADE;
 DROP TABLE IF EXISTS preferencias            CASCADE;
 DROP TABLE IF EXISTS puntos                  CASCADE;
 DROP TABLE IF EXISTS votos_encuesta          CASCADE;
@@ -63,7 +64,9 @@ CREATE TABLE servidores (
     duenio_id       INTEGER      NOT NULL REFERENCES usuarios(id),
     fecha_creacion  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     -- Servidores temporales: si tiene fecha, se borra solo al llegar a ella.
-    expira_en       TIMESTAMP
+    expira_en       TIMESTAMP,
+    -- Foto del servidor (la elige el dueño). NULL = se muestran las iniciales.
+    icono_url       VARCHAR(255)
 );
 
 
@@ -397,4 +400,15 @@ CREATE TABLE IF NOT EXISTS preferencias (
     compacto        BOOLEAN     NOT NULL DEFAULT FALSE,
     -- Pestañas del servidor en fila ('horizontal') o en columna ('vertical').
     disposicion     VARCHAR(10) NOT NULL DEFAULT 'horizontal' CHECK (disposicion IN ('horizontal', 'vertical'))
+);
+
+
+-- 21. Conversaciones fijadas en los mensajes directos (cada uno elige las suyas
+-- y su orden; siempre aparecen arriba).
+CREATE TABLE IF NOT EXISTS directos_fijados (
+    usuario_id  INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    otro_id     INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    posicion    INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (usuario_id, otro_id),
+    CONSTRAINT chk_fijado_distinto CHECK (usuario_id <> otro_id)
 );

@@ -16,6 +16,7 @@ from src.repositories.historial_repository import HistorialRepository
 from src.repositories.miembro_repository import MiembroRepository
 from src.repositories.rol_repository import RolRepository
 from src.repositories.servidor_repository import ServidorRepository
+from src.services.archivo_service import ArchivoService
 from src.services.permisos_service import PermisosService
 from src.utils.errors import ForbiddenError, UnprocessableError
 from src.utils.fechas import ahora
@@ -121,6 +122,10 @@ class ServidorService:
             cambios["expira_en"] = None
         elif dto.duracion_horas is not None:
             cambios["expira_en"] = ahora() + timedelta(hours=dto.duracion_horas)
+        if dto.quitar_icono:
+            cambios["icono_url"] = None
+        elif dto.icono_url is not None:
+            cambios["icono_url"] = ArchivoService.validar_imagen(dto.icono_url)
         if cambios:
             self.servidores.update(servidor, **cambios)
             self.db.commit()

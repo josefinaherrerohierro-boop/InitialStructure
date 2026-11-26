@@ -54,5 +54,7 @@ class MensajeDirectoResponseDTO(BaseModel):
 
 class ConversacionDTO(BaseModel):
     usuario: UsuarioResumenDTO
-    ultimo_mensaje: MensajeDirectoResponseDTO
+    # None si está fijada pero todavía no se escribieron.
+    ultimo_mensaje: MensajeDirectoResponseDTO | None
     no_leidos: int
+    fijada: bool = False

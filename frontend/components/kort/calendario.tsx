@@ -2,15 +2,17 @@
 
 import { useMemo, useState } from 'react'
 import useSWR from 'swr'
-import { CalendarPlus, ChevronLeft, ChevronRight, Clock, MapPin, Pencil, Trash2, Users } from 'lucide-react'
+import { CalendarPlus, ChevronLeft, ChevronRight, CircleCheck, Clock, ListTodo, MapPin, Pencil, Trash2, Users } from 'lucide-react'
 import {
   alternarAsistencia,
   borrarEvento,
   crearEvento,
   editarEvento,
   getEventos,
+  getTareas,
   mensajeDeError,
   type Evento,
+  type Tarea,
 } from '@/lib/api'
 import { parseFecha, type Permisos } from '@/lib/kort'
 import { cn } from '@/lib/utils'
@@ -209,10 +211,13 @@ export function CalendarioView({
   servidorId,
   miId,
   permisos,
+  onVerTareas,
 }: {
   servidorId: number
   miId: number
   permisos: Permisos
+  /** Para ir a la pestaña Tareas desde el calendario. */
+  onVerTareas?: () => void
 }) {
   const hoy = sinHora(new Date())
   const [mes, setMes] = useState(() => new Date(hoy.getFullYear(), hoy.getMonth(), 1))
@@ -231,12 +236,16 @@ export function CalendarioView({
   const { data: eventos, mutate } = useSWR(['eventos', servidorId, desde], () => getEventos(servidorId, desde, hasta), {
     refreshInterval: 30000,
   })
+  // Las tareas con fecha límite también aparecen en el calendario (misma caché que la pestaña Tareas).
+  const { data: tareas } = useSWR(['tareas', servidorId, false], () => getTareas(servidorId), { refreshInterval: 30000 })
+  const tareasDe = (d: Date): Tarea[] => (tareas ?? []).filter((t) => t.fecha_limite && mismoDia(parseFecha(t.fecha_limite), d))
   const delDia = (eventos ?? []).filter((e) => ocurreEl(e, elegido))
+  const tareasDelDia = tareasDe(elegido)
   const proximos = (eventos ?? []).filter((e) => parseFecha(e.fin ?? e.inicio) >= new Date()).slice(0, 5)
 
   return (
-    <div className="scrollbar-thin flex-1 overflow-y-auto">
-      <div className="mx-auto grid max-w-6xl gap-6 p-4 lg:grid-cols-[1fr_22rem]">
+    <div className="scrollbar-thin @container flex-1 overflow-y-auto">
+      <div className="mx-auto grid max-w-6xl gap-6 p-4 @4xl:grid-cols-[1fr_20rem]">
         <section aria-label="Calendario" className="flex flex-col gap-3">
           <div className="flex items-center gap-2">
             <h2 className="flex-1 text-lg font-semibold">{capitalizar(formatoMes.format(mes))}</h2>
@@ -258,6 +267,11 @@ export function CalendarioView({
             ))}
             {dias.map((d) => {
               const evs = (eventos ?? []).filter((e) => ocurreEl(e, d))
+              const tars = tareasDe(d)
+              const cosas = [
+                ...evs.map((e) => ({ clave: `e${e.id}`, texto: e.titulo, tarea: null as Tarea | null })),
+                ...tars.map((t) => ({ clave: `t${t.id}`, texto: t.titulo, tarea: t })),
+              ]
               const otroMes = d.getMonth() !== mes.getMonth()
               const esHoy = mismoDia(d, hoy)
               const esElegido = mismoDia(d, elegido)
@@ -267,9 +281,9 @@ export function CalendarioView({
                   type="button"
                   onClick={() => setElegido(d)}
                   aria-pressed={esElegido}
-                  aria-label={`${formatoDia.format(d)}${evs.length ? `, ${evs.length} eventos` : ''}`}
+                  aria-label={`${formatoDia.format(d)}${evs.length ? `, ${evs.length} eventos` : ''}${tars.length ? `, ${tars.length} tareas` : ''}`}
                   className={cn(
-                    'flex min-h-16 flex-col gap-1 border-b border-r border-border p-1.5 text-left transition-colors sm:min-h-24 [&:nth-child(7n+7)]:border-r-0',
+                    'flex min-h-16 min-w-0 flex-col gap-1 border-b border-r border-border p-1.5 text-left transition-colors @xl:min-h-24 [&:nth-child(7n+7)]:border-r-0',
                     otroMes ? 'bg-background/40 text-muted-foreground/60' : 'bg-background',
                     esElegido ? 'bg-primary/10' : 'hover:bg-surface',
                   )}
@@ -282,19 +296,30 @@ export function CalendarioView({
                   >
                     {d.getDate()}
                   </span>
-                  {evs.slice(0, 2).map((e) => (
-                    <span key={e.id} className="hidden truncate rounded bg-primary/20 px-1 text-[11px] text-foreground sm:block">
-                      {e.titulo}
+                  {cosas.slice(0, 2).map((c) => (
+                    <span
+                      key={c.clave}
+                      className={cn(
+                        'hidden items-center gap-0.5 truncate rounded px-1 text-[11px] @xl:flex',
+                        !c.tarea
+                          ? 'bg-primary/20 text-foreground'
+                          : c.tarea.estado === 'hecha'
+                            ? 'bg-success/15 text-muted-foreground line-through'
+                            : 'bg-warning/20 text-foreground',
+                      )}
+                    >
+                      {c.tarea && <ListTodo className="size-3 shrink-0" aria-hidden />}
+                      <span className="truncate">{c.texto}</span>
                     </span>
                   ))}
-                  {evs.length > 0 && (
-                    <span className="flex gap-0.5 sm:hidden" aria-hidden>
-                      {evs.slice(0, 3).map((e) => (
-                        <span key={e.id} className="size-1.5 rounded-full bg-primary" />
+                  {cosas.length > 0 && (
+                    <span className="flex gap-0.5 @xl:hidden" aria-hidden>
+                      {cosas.slice(0, 3).map((c) => (
+                        <span key={c.clave} className={cn('size-1.5 rounded-full', c.tarea ? 'bg-warning' : 'bg-primary')} />
                       ))}
                     </span>
                   )}
-                  {evs.length > 2 && <span className="hidden text-[10px] text-muted-foreground sm:block">+{evs.length - 2} más</span>}
+                  {cosas.length > 2 && <span className="hidden text-[10px] text-muted-foreground @xl:block">+{cosas.length - 2} más</span>}
                 </button>
               )
             })}
@@ -311,6 +336,37 @@ export function CalendarioView({
               </Boton>
             )}
           </div>
+          {tareasDelDia.length > 0 && (
+            <div className="flex flex-col gap-1.5 rounded-xl border border-warning/40 bg-warning/8 p-3">
+              <div className="flex items-center gap-2">
+                <ListTodo className="size-4 text-warning" aria-hidden />
+                <h4 className="flex-1 text-sm font-semibold">Tareas que vencen este día</h4>
+                {onVerTareas && (
+                  <button type="button" onClick={onVerTareas} className="text-xs font-medium text-primary hover:underline">
+                    Ver tareas
+                  </button>
+                )}
+              </div>
+              <ul className="flex flex-col gap-1">
+                {tareasDelDia.map((t) => (
+                  <li key={t.id} className="flex items-center gap-2 text-sm">
+                    {t.estado === 'hecha' ? (
+                      <CircleCheck className="size-4 shrink-0 text-success" aria-label="Hecha" />
+                    ) : (
+                      <span className={cn('size-3 shrink-0 rounded-full border-2', t.estado === 'en_progreso' ? 'border-warning bg-warning/40' : 'border-muted-foreground/60')} />
+                    )}
+                    <span className={cn('min-w-0 flex-1 truncate', t.estado === 'hecha' && 'text-muted-foreground line-through')}>{t.titulo}</span>
+                    {t.asignado && (
+                      <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+                        <Avatar nombre={t.asignado.username} url={t.asignado.avatar_url} tamanio="sm" className="size-5 text-[9px]" />
+                        {t.asignado.username}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {delDia.length === 0 ? (
             <p className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">No hay eventos este día.</p>
           ) : (

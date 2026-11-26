@@ -110,7 +110,7 @@ export function ResumenServidor({
   const pendientes = (tareas ?? []).filter((t) => t.estado !== 'hecha')
 
   return (
-    <div className="scrollbar-thin flex-1 overflow-y-auto">
+    <div className="scrollbar-thin @container flex-1 overflow-y-auto">
       <div className="mx-auto flex max-w-6xl flex-col gap-5 p-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
@@ -134,7 +134,7 @@ export function ResumenServidor({
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 @2xl:grid-cols-2 @5xl:grid-cols-3">
           <Tarjeta titulo="Próximos eventos" Icono={CalendarDays} color="bg-primary/15 text-primary" onVer={() => onVista('calendario')}>
             {!eventos ? (
               <div className="h-16 animate-pulse rounded-xl bg-elevated" />
@@ -207,14 +207,14 @@ export function ResumenServidor({
             Icono={Newspaper}
             color="bg-[#3d6fd9]/15 text-[#3d6fd9]"
             onVer={() => onVista('publicaciones')}
-            className="md:col-span-2"
+            className="@2xl:col-span-2"
           >
             {!publicaciones ? (
               <div className="h-16 animate-pulse rounded-xl bg-elevated" />
             ) : publicaciones.length === 0 ? (
               <Vacio>Nadie publicó nada todavía.</Vacio>
             ) : (
-              <ul className="grid gap-2 sm:grid-cols-2">
+              <ul className="grid gap-2 @xl:grid-cols-2">
                 {publicaciones.slice(0, 4).map((p) => (
                   <li key={p.id} className="flex gap-2.5 rounded-2xl bg-surface p-3 shadow-[var(--sombra)]">
                     <button type="button" onClick={() => onVerPerfil(p.autor.id)} aria-label={`Ver perfil de ${p.autor.username}`}>

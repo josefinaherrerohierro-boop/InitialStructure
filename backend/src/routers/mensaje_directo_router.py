@@ -6,7 +6,7 @@ from src.db.models.usuario_model import Usuario
 from src.dtos.archivo_dto import AdjuntoDTO
 from src.dtos.social_dto import ConversacionDTO, CreateMensajeDirectoDTO, MensajeDirectoResponseDTO
 from src.middlewares.auth_middleware import get_current_user
-from src.schemas.social_schema import CreateMensajeDirectoSchema, UpdateMensajeDirectoSchema
+from src.schemas.social_schema import CreateMensajeDirectoSchema, FijadosSchema, UpdateMensajeDirectoSchema
 from src.services.mensaje_directo_service import MensajeDirectoService
 
 router = APIRouter(prefix="/mensajes-directos", tags=["mensajes directos"])
@@ -16,6 +16,16 @@ router = APIRouter(prefix="/mensajes-directos", tags=["mensajes directos"])
 @router.get("", response_model=list[ConversacionDTO])
 def mis_conversaciones(db: Session = Depends(get_db), actual: Usuario = Depends(get_current_user)):
     return MensajeDirectoService(db).conversaciones(actual.id)
+
+
+# Fijar conversaciones arriba (y elegir su orden). Reemplaza la lista entera.
+@router.put("/fijados", response_model=list[ConversacionDTO])
+def fijar_conversaciones(
+    payload: FijadosSchema,
+    db: Session = Depends(get_db),
+    actual: Usuario = Depends(get_current_user),
+):
+    return MensajeDirectoService(db).fijar(payload.usuario_ids, actual.id)
 
 
 # Mensajes con un usuario (paginados igual que los canales). Los marca como leídos.

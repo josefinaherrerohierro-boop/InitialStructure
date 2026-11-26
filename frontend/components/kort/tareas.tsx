@@ -236,7 +236,7 @@ export function TareasView({
   })
 
   return (
-    <div className="scrollbar-thin flex-1 overflow-y-auto">
+    <div className="scrollbar-thin @container flex-1 overflow-y-auto">
       <div className="mx-auto flex max-w-6xl flex-col gap-4 p-4">
         <div className="flex flex-wrap items-center gap-3">
           <Interruptor activo={soloMias} onCambiar={setSoloMias} etiqueta="Solo las mías" />
@@ -247,7 +247,7 @@ export function TareasView({
             </Boton>
           )}
         </div>
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 @3xl:grid-cols-3">
           {COLUMNAS.map(({ estado, titulo, Icono, color }) => {
             const lista = (tareas ?? []).filter((t) => t.estado === estado)
             return (

@@ -12,6 +12,8 @@ class UpdateServidorDTO(BaseModel):
     nombre: str | None = None
     duracion_horas: int | None = None
     hacer_permanente: bool = False
+    icono_url: str | None = None
+    quitar_icono: bool = False
 
 
 class ServidorResponseDTO(BaseModel):
@@ -20,6 +22,7 @@ class ServidorResponseDTO(BaseModel):
     duenio_id: int
     fecha_creacion: datetime
     expira_en: datetime | None = None  # None = permanente
+    icono_url: str | None = None  # foto del servidor
 
     model_config = {"from_attributes": True}
 

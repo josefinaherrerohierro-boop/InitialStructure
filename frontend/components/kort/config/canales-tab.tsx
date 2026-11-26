@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useCambiosPendientes } from '../cambios-pendientes'
 import { AudioLines, MessageCircle, Pencil, Trash2 } from 'lucide-react'
 import { actualizarCanal, borrarCanal, mensajeDeError, type Canal } from '@/lib/api'
 import { useToast } from '../toast-provider'
@@ -24,6 +25,7 @@ function FilaCanal({ canal, onActualizar }: { canal: Canal; onActualizar: () => 
   const toast = useToast()
   const [editando, setEditando] = useState(false)
   const [nombre, setNombre] = useState(canal.nombre)
+  useCambiosPendientes(editando && nombre.trim() !== canal.nombre)
   const [borrando, setBorrando] = useState(false)
   const Icono = canal.tipo === 'voz' ? AudioLines : MessageCircle
 

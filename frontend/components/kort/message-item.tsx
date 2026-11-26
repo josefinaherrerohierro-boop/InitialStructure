@@ -267,8 +267,9 @@ export function MessageItem({
       {!editando && hayAcciones && (
         <div
           className={cn(
-            'absolute -top-3 z-10 flex items-center gap-0.5 rounded-full border border-border bg-surface p-0.5 shadow-[var(--sombra)]',
-            propio ? 'left-5' : 'right-5',
+            // Justo arriba del mensaje, del mismo lado que la burbuja.
+            'absolute -top-4 z-10 flex items-center gap-0.5 rounded-full border border-border bg-surface p-0.5 shadow-[var(--sombra)]',
+            propio ? 'right-3 sm:right-5' : 'left-[3.4rem] sm:left-[4.4rem]',
             confirmarBorrado ? 'flex' : 'hidden group-hover:flex group-focus-within:flex',
           )}
         >

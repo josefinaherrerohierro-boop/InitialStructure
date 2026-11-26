@@ -28,20 +28,41 @@ class MensajeDirectoService:
         self.amistades = AmistadService(db)
 
     def conversaciones(self, actual_id: int) -> list[ConversacionDTO]:
+        """Primero las fijadas (en el orden elegido), después el resto por la más reciente."""
         no_leidos = self.mensajes.no_leidos_por_remitente(actual_id)
-        resultado = []
+        fijados = self.mensajes.fijados(actual_id)
+        ultimos: dict[int, ConversacionDTO] = {}
         for m in self.mensajes.ultimos_por_conversacion(actual_id):
             otro_id = m.destinatario_id if m.remitente_id == actual_id else m.remitente_id
             otro = self.usuarios.find_by_id(otro_id)
             autor = otro if m.remitente_id == otro_id else self.usuarios.find_by_id(actual_id)
-            resultado.append(
-                ConversacionDTO(
-                    usuario=to_usuario_resumen(otro),
-                    ultimo_mensaje=to_mensaje_directo_response(m, autor),
-                    no_leidos=no_leidos.get(otro_id, 0),
-                )
+            ultimos[otro_id] = ConversacionDTO(
+                usuario=to_usuario_resumen(otro),
+                ultimo_mensaje=to_mensaje_directo_response(m, autor),
+                no_leidos=no_leidos.get(otro_id, 0),
             )
-        return resultado
+        resultado = []
+        for otro_id in fijados:
+            conversacion = ultimos.pop(otro_id, None)
+            if conversacion is None:
+                otro = self.usuarios.find_by_id(otro_id)
+                if otro is None:
+                    continue
+                conversacion = ConversacionDTO(usuario=to_usuario_resumen(otro), ultimo_mensaje=None, no_leidos=0)
+            conversacion.fijada = True
+            resultado.append(conversacion)
+        return resultado + list(ultimos.values())
+
+    def fijar(self, usuario_ids: list[int], actual_id: int) -> list[ConversacionDTO]:
+        """Reemplaza la lista de conversaciones fijadas (y su orden)."""
+        ids = list(dict.fromkeys(usuario_ids))
+        if actual_id in ids:
+            raise UnprocessableError("No te podés fijar a vos mismo")
+        if any(self.usuarios.find_by_id(i) is None for i in ids):
+            raise NotFoundError("Usuario no encontrado")
+        self.mensajes.reemplazar_fijados(actual_id, ids)
+        self.db.commit()
+        return self.conversaciones(actual_id)
 
     def listar(
         self, otro_id: int, actual_id: int, limite: int = 50, antes_de: int | None = None

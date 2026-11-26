@@ -19,6 +19,11 @@ class UpdateMensajeDirectoSchema(BaseModel):
     contenido: str = Field(default="", max_length=2000)
 
 
+class FijadosSchema(BaseModel):
+    # Personas fijadas en los mensajes directos, en el orden en que se quieren ver.
+    usuario_ids: list[int] = Field(max_length=50)
+
+
 class MiFotoSchema(BaseModel):
     # null = volver a usar la foto principal en este servidor
     foto_id: int | None = Field(default=None, gt=0)

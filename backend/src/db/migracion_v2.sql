@@ -306,3 +306,18 @@ ALTER TABLE estados ADD CONSTRAINT chk_estado_valido CHECK (char_length(contenid
 -- Pestañas del servidor en fila o en columna ---------------------------
 ALTER TABLE preferencias ADD COLUMN IF NOT EXISTS disposicion VARCHAR(10) NOT NULL DEFAULT 'horizontal'
     CHECK (disposicion IN ('horizontal', 'vertical'));
+
+
+-- Foto del servidor -------------------------------------------------------
+ALTER TABLE servidores ADD COLUMN IF NOT EXISTS icono_url VARCHAR(255);
+
+
+-- 21. Conversaciones fijadas en los mensajes directos (cada uno elige las suyas
+-- y su orden; siempre aparecen arriba).
+CREATE TABLE IF NOT EXISTS directos_fijados (
+    usuario_id  INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    otro_id     INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    posicion    INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (usuario_id, otro_id),
+    CONSTRAINT chk_fijado_distinto CHECK (usuario_id <> otro_id)
+);

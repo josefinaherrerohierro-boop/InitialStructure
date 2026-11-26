@@ -15,3 +15,4 @@ class Servidor(Base):
     fecha_creacion = Column(DateTime, nullable=False, server_default=func.now())
     # Servidores temporales: al llegar a esta fecha se borran solos. NULL = permanente.
     expira_en = Column(DateTime, nullable=True)
+    icono_url = Column(String(255), nullable=True)  # foto del servidor

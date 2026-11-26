@@ -105,7 +105,7 @@ export function ServerSelector({
                       aria-hidden
                     />
                   )}
-                  <Avatar nombre={s.nombre} tamanio="sm" />
+                  <Avatar nombre={s.nombre} url={s.icono_url} tamanio="sm" />
                   <span className={cn('flex-1 truncate', activo && 'font-medium')}>{s.nombre}</span>
                   {s.expira_en && (
                     <span title={tiempoRestante(s.expira_en)} className="shrink-0">

@@ -8,6 +8,7 @@ import { Avatar } from '../ui'
 import { CuentaTab } from './cuenta-tab'
 import { HistorialTab } from './historial-tab'
 import { PerfilTab } from './perfil-tab'
+import { useCerrarConAviso } from '../cambios-pendientes'
 
 export type PestaniaAjustes = 'perfil' | 'cuenta' | 'apariencia' | 'historial' | 'wrapped'
 
@@ -30,14 +31,15 @@ export function AjustesUsuario({
   wrapped?: React.ReactNode
 }) {
   const [actual, setActual] = useState<PestaniaAjustes>(inicial)
+  const { Proveedor, intentar, aviso } = useCerrarConAviso()
 
   useEffect(() => {
     function alApretar(e: KeyboardEvent) {
-      if (e.key === 'Escape') onCerrar()
+      if (e.key === 'Escape') intentar(onCerrar)
     }
     window.addEventListener('keydown', alApretar)
     return () => window.removeEventListener('keydown', alApretar)
-  }, [onCerrar])
+  }, [onCerrar, intentar])
 
   const pestanias = [
     { id: 'perfil' as const, etiqueta: 'Mi perfil', Icono: UserCircle, visible: true },
@@ -62,7 +64,7 @@ export function AjustesUsuario({
             <li key={id}>
               <button
                 type="button"
-                onClick={() => setActual(id)}
+                onClick={() => id !== actual && intentar(() => setActual(id))}
                 aria-current={actual === id ? 'page' : undefined}
                 className={cn(
                   'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm whitespace-nowrap transition-colors',
@@ -85,7 +87,7 @@ export function AjustesUsuario({
             <h2 className="text-xl font-semibold">{pestanias.find((p) => p.id === actual)?.etiqueta}</h2>
             <button
               type="button"
-              onClick={onCerrar}
+              onClick={() => intentar(onCerrar)}
               className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-sm text-muted-foreground hover:bg-elevated hover:text-foreground"
             >
               <X className="size-4" aria-hidden />
@@ -93,13 +95,16 @@ export function AjustesUsuario({
             </button>
           </div>
 
+          <Proveedor>
           {actual === 'perfil' && <PerfilTab usuario={usuario} onActualizado={onActualizado} />}
           {actual === 'cuenta' && <CuentaTab key={`${usuario.username}-${usuario.email}`} usuario={usuario} onActualizado={onActualizado} />}
           {actual === 'apariencia' && apariencia}
           {actual === 'historial' && <HistorialTab />}
           {actual === 'wrapped' && wrapped}
+          </Proveedor>
         </div>
       </main>
+      {aviso}
     </div>
   )
 }

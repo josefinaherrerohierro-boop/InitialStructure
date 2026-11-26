@@ -6,16 +6,18 @@
  */
 
 import { useState } from 'react'
-import useSWR from 'swr'
-import { Check, MessageCircle, Newspaper, Sparkles, UserPlus, Users, X } from 'lucide-react'
+import useSWR, { useSWRConfig } from 'swr'
+import { ArrowDown, ArrowUp, Check, MessageCircle, Newspaper, Pin, PinOff, Sparkles, UserPlus, Users, X } from 'lucide-react'
 import {
   aceptarSolicitud,
   enviarSolicitud,
+  fijarConversaciones,
   getAmigos,
   getConversaciones,
   getSolicitudes,
   mensajeDeError,
   rechazarSolicitud,
+  type Conversacion,
   type UsuarioResumen,
 } from '@/lib/api'
 import { horaMensaje } from '@/lib/kort'
@@ -91,32 +93,153 @@ export function InicioSidebar({
         )}
       </div>
 
-      <h3 className="px-2 text-xs font-semibold text-muted-foreground">Mensajes directos</h3>
-      <ul className="scrollbar-thin flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto pr-1">
-        {conversaciones?.length === 0 && (
-          <li className="px-2 text-sm text-muted-foreground">Todavía no tenés conversaciones. Escribile a un amigo.</li>
-        )}
-        {conversaciones?.map((c) => {
-          const activo = seleccion.tipo === 'dm' && seleccion.usuario.id === c.usuario.id
-          const ultimo = c.ultimo_mensaje
-          const vista = ultimo.contenido || (ultimo.adjunto ? `📎 ${ultimo.adjunto.tipo}` : '')
-          return (
-            <li key={c.usuario.id}>
-              <button type="button" onClick={() => onSeleccionar({ tipo: 'dm', usuario: c.usuario })} className={item(activo)}>
-                <Avatar nombre={c.usuario.username} url={c.usuario.avatar_url} tamanio="sm" />
-                <span className="min-w-0 flex-1">
-                  <span className={cn('block truncate', c.no_leidos > 0 && 'font-semibold text-foreground')}>
-                    {c.usuario.username}
-                  </span>
-                  <span className="block truncate text-xs text-muted-foreground">{vista}</span>
-                </span>
-                <Globito n={c.no_leidos} />
-              </button>
-            </li>
-          )
-        })}
-      </ul>
+      <ListaConversaciones seleccion={seleccion} onSeleccionar={onSeleccionar} conversaciones={conversaciones} item={item} />
     </section>
+  )
+}
+
+/**
+ * Mensajes directos: arriba las conversaciones fijadas (en el orden que elijas,
+ * arrastrando o con flechas) y abajo el resto, de la más reciente a la más vieja.
+ */
+function ListaConversaciones({
+  seleccion,
+  onSeleccionar,
+  conversaciones,
+  item,
+}: {
+  seleccion: SeleccionInicio
+  onSeleccionar: (s: SeleccionInicio) => void
+  conversaciones: Conversacion[] | undefined
+  item: (activo: boolean) => string
+}) {
+  const toast = useToast()
+  const { mutate } = useSWRConfig()
+  const [arrastrando, setArrastrando] = useState<number | null>(null)
+  // Mientras se arrastra, el orden se ve en vivo antes de guardarlo.
+  const [ordenEnVivo, setOrdenEnVivo] = useState<number[] | null>(null)
+
+  const todas = conversaciones ?? []
+  const fijadasApi = todas.filter((c) => c.fijada)
+  const porId = new Map(fijadasApi.map((c) => [c.usuario.id, c]))
+  const fijadas = ordenEnVivo ? ordenEnVivo.map((id) => porId.get(id)!).filter(Boolean) : fijadasApi
+  const resto = todas.filter((c) => !c.fijada)
+
+  async function guardar(ids: number[]) {
+    const nuevas = [
+      ...ids.map((id) => ({ ...(porId.get(id) ?? todas.find((c) => c.usuario.id === id)!), fijada: true })),
+      ...todas.filter((c) => !ids.includes(c.usuario.id)).map((c) => ({ ...c, fijada: false })),
+    ]
+    try {
+      await mutate('conversaciones', fijarConversaciones(ids), { optimisticData: nuevas, rollbackOnError: true, revalidate: false })
+    } catch (err) {
+      toast.error(mensajeDeError(err))
+    }
+  }
+
+  const idsFijados = fijadas.map((c) => c.usuario.id)
+  const mover = (desde: number, hasta: number) => {
+    if (hasta < 0 || hasta >= idsFijados.length) return
+    const ids = [...idsFijados]
+    const [x] = ids.splice(desde, 1)
+    ids.splice(hasta, 0, x)
+    return ids
+  }
+
+  function fila(c: Conversacion, i: number, esFijada: boolean) {
+    const activo = seleccion.tipo === 'dm' && seleccion.usuario.id === c.usuario.id
+    const ultimo = c.ultimo_mensaje
+    const vista = ultimo ? ultimo.contenido || (ultimo.adjunto ? `📎 ${ultimo.adjunto.tipo}` : '') : 'Todavía no se escribieron'
+    const botonMini = 'rounded-md p-1 text-muted-foreground hover:bg-border/60 hover:text-foreground disabled:opacity-25'
+    return (
+      <li
+        key={c.usuario.id}
+        draggable={esFijada}
+        onDragStart={(e) => {
+          if (!esFijada) return
+          e.dataTransfer.effectAllowed = 'move'
+          setArrastrando(c.usuario.id)
+          setOrdenEnVivo(idsFijados)
+        }}
+        onDragOver={(e) => {
+          if (!esFijada || arrastrando === null) return
+          e.preventDefault()
+          const desde = (ordenEnVivo ?? idsFijados).indexOf(arrastrando)
+          if (desde !== i && desde >= 0) {
+            const ids = [...(ordenEnVivo ?? idsFijados)]
+            ids.splice(desde, 1)
+            ids.splice(i, 0, arrastrando)
+            setOrdenEnVivo(ids)
+          }
+        }}
+        onDragEnd={() => {
+          const final = ordenEnVivo
+          setArrastrando(null)
+          setOrdenEnVivo(null)
+          if (final) guardar(final)
+        }}
+        className={cn('group relative', esFijada && 'cursor-grab', arrastrando === c.usuario.id && 'opacity-40')}
+      >
+        <button type="button" onClick={() => onSeleccionar({ tipo: 'dm', usuario: c.usuario })} className={cn(item(activo), 'pr-16')}>
+          <Avatar nombre={c.usuario.username} url={c.usuario.avatar_url} tamanio="sm" />
+          <span className="min-w-0 flex-1">
+            <span className={cn('block truncate', c.no_leidos > 0 && 'font-semibold text-foreground')}>{c.usuario.username}</span>
+            <span className="block truncate text-xs text-muted-foreground">{vista}</span>
+          </span>
+          <Globito n={c.no_leidos} />
+        </button>
+        <span className="absolute top-1/2 right-1 hidden -translate-y-1/2 items-center gap-0.5 rounded-lg bg-surface p-0.5 shadow-[var(--sombra)] group-focus-within:flex group-hover:flex">
+          {esFijada && (
+            <>
+              <button type="button" onClick={() => guardar(mover(i, i - 1)!)} disabled={i === 0} className={botonMini} aria-label={`Subir a ${c.usuario.username}`}>
+                <ArrowUp className="size-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => guardar(mover(i, i + 1)!)}
+                disabled={i === idsFijados.length - 1}
+                className={botonMini}
+                aria-label={`Bajar a ${c.usuario.username}`}
+              >
+                <ArrowDown className="size-3.5" />
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            onClick={() => guardar(esFijada ? idsFijados.filter((id) => id !== c.usuario.id) : [...idsFijados, c.usuario.id])}
+            className={botonMini}
+            aria-label={esFijada ? `Desfijar a ${c.usuario.username}` : `Fijar a ${c.usuario.username} arriba`}
+            title={esFijada ? 'Desfijar' : 'Fijar arriba'}
+          >
+            {esFijada ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
+          </button>
+        </span>
+      </li>
+    )
+  }
+
+  return (
+    <div className="scrollbar-thin flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1">
+      {fijadas.length > 0 && (
+        <div className="flex flex-col gap-0.5">
+          <h3 className="flex items-center gap-1.5 px-2 pb-0.5 text-xs font-semibold text-muted-foreground">
+            <Pin className="size-3" aria-hidden />
+            Fijados
+          </h3>
+          <ul className="flex flex-col gap-0.5">{fijadas.map((c, i) => fila(c, i, true))}</ul>
+        </div>
+      )}
+      <div className="flex flex-col gap-0.5">
+        <h3 className="px-2 pb-0.5 text-xs font-semibold text-muted-foreground">Mensajes directos</h3>
+        <ul className="flex flex-col gap-0.5">
+          {conversaciones && resto.length === 0 && fijadas.length === 0 && (
+            <li className="px-2 text-sm text-muted-foreground">Todavía no tenés conversaciones. Escribile a un amigo.</li>
+          )}
+          {resto.map((c, i) => fila(c, i, false))}
+        </ul>
+      </div>
+    </div>
   )
 }
 

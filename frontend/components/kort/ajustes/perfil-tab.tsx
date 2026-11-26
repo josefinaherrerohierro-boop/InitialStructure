@@ -19,6 +19,7 @@ import {
   type Usuario,
 } from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { useCambiosPendientes } from '../cambios-pendientes'
 import { Seccion } from '../config/confirmar'
 import { REDES } from '../perfil-modal'
 import { useToast } from '../toast-provider'
@@ -136,6 +137,11 @@ function FormularioPerfil({ perfil, onCambio }: { perfil: Perfil; onCambio: (p: 
   const [etiquetas, setEtiquetas] = useState(perfil.etiquetas)
   const [nuevaEtiqueta, setNuevaEtiqueta] = useState('')
   const [redes, setRedes] = useState<RedSocial[]>(perfil.redes)
+  useCambiosPendientes(
+    bio !== (perfil.bio ?? '') ||
+      JSON.stringify(etiquetas) !== JSON.stringify(perfil.etiquetas) ||
+      JSON.stringify(redes.filter((r) => r.url.trim() && r.url.trim() !== 'https://')) !== JSON.stringify(perfil.redes),
+  )
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
 

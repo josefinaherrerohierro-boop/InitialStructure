@@ -1,6 +1,7 @@
 from sqlalchemy import and_, case, func, or_
 from sqlalchemy.orm import Session
 
+from src.db.models.directo_fijado_model import DirectoFijado
 from src.db.models.mensaje_directo_model import MensajeDirecto
 
 
@@ -79,6 +80,23 @@ class MensajeDirectoRepository:
             .all()
         )
         return dict(filas)
+
+    # ---------- Conversaciones fijadas ----------
+    def fijados(self, usuario_id: int) -> list[int]:
+        """Ids de las personas fijadas, en el orden elegido."""
+        filas = (
+            self.db.query(DirectoFijado.otro_id)
+            .filter(DirectoFijado.usuario_id == usuario_id)
+            .order_by(DirectoFijado.posicion)
+            .all()
+        )
+        return [i for (i,) in filas]
+
+    def reemplazar_fijados(self, usuario_id: int, otros_ids: list[int]) -> None:
+        self.db.query(DirectoFijado).filter(DirectoFijado.usuario_id == usuario_id).delete()
+        for posicion, otro_id in enumerate(otros_ids):
+            self.db.add(DirectoFijado(usuario_id=usuario_id, otro_id=otro_id, posicion=posicion))
+        self.db.flush()
 
     def update(self, mensaje: MensajeDirecto, **campos) -> MensajeDirecto:
         for nombre, valor in campos.items():

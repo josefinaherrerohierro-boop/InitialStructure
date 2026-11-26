@@ -14,6 +14,9 @@ class UpdateServidorSchema(BaseModel):
     # o hacer_permanente = true para que no se borre nunca.
     duracion_horas: int | None = Field(default=None, ge=1, le=720)
     hacer_permanente: bool = False
+    # Foto del servidor: una imagen subida con POST /archivos. quitar_icono = volver a las iniciales.
+    icono_url: str | None = Field(default=None, max_length=255)
+    quitar_icono: bool = False
 
 
 class OrdenServidoresSchema(BaseModel):

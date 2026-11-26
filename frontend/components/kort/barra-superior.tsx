@@ -92,7 +92,7 @@ export function PestaniasServidores({
               sobre === i && arrastrando !== i && 'ring-2 ring-primary/50',
             )}
           >
-            <Avatar nombre={s.nombre} tamanio="sm" className="rounded-full" />
+            <Avatar nombre={s.nombre} url={s.icono_url} tamanio="sm" className="rounded-full" />
             <span className="max-w-40 truncate">{s.nombre}</span>
             {s.expira_en && <Hourglass className="size-3.5 text-primary" aria-label="Temporal" />}
             {s.duenio_id === miId && <Crown className="size-3.5 text-warning" aria-label="Sos el dueño" />}

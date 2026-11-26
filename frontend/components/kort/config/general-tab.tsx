@@ -14,7 +14,9 @@ import type { Permisos } from '@/lib/kort'
 import { useToast } from '../toast-provider'
 import { Boton, Campo, ErrorFormulario, Input } from '../ui'
 import { Confirmar, Seccion } from './confirmar'
+import { FotoServidor } from './foto-servidor'
 import { MiFotoServidor } from './mi-foto-servidor'
+import { useCambiosPendientes } from '../cambios-pendientes'
 import { horaMensaje } from '@/lib/kort'
 import { DURACIONES } from '../modals'
 
@@ -35,6 +37,7 @@ export function GeneralTab({
 }) {
   const toast = useToast()
   const [nombre, setNombre] = useState(servidor.nombre)
+  useCambiosPendientes(nombre.trim() !== servidor.nombre)
   const [guardando, setGuardando] = useState(false)
   const [errorNombre, setErrorNombre] = useState<string | null>(null)
   const [nuevoDuenio, setNuevoDuenio] = useState('')
@@ -71,6 +74,8 @@ export function GeneralTab({
 
   return (
     <div className="flex flex-col gap-6">
+      {permisos.esDuenio && <FotoServidor servidor={servidor} onActualizar={onActualizar} />}
+
       {permisos.esDuenio && (
         <Seccion titulo="Nombre del servidor">
           <form onSubmit={guardarNombre} className="flex flex-col gap-3">

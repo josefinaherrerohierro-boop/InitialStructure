@@ -16,3 +16,5 @@ class Servidor(Base):
     # Servidores temporales: al llegar a esta fecha se borran solos. NULL = permanente.
     expira_en = Column(DateTime, nullable=True)
     icono_url = Column(String(255), nullable=True)  # foto del servidor
+    # Contraseña para borrarlo (bcrypt). Nunca sale del backend. NULL = se usa la de la cuenta del dueño.
+    clave_borrado_hash = Column(String(255), nullable=True)

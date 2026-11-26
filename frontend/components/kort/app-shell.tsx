@@ -101,6 +101,8 @@ function AppShellInterno() {
   const [modal, setModal] = useState<ModalAbierto>(null)
   const [perfilAbierto, setPerfilAbierto] = useState<number | null>(null)
   const [wrappedAbierto, setWrappedAbierto] = useState(false)
+  // Llamada ampliada: se ocultan los paneles de los costados y el encabezado del servidor.
+  const [llamadaAmpliada, setLlamadaAmpliada] = useState(false)
   // Chat de voz: vive acá para que la llamada siga aunque mires otro canal.
   const voz = useVoz()
 
@@ -260,6 +262,7 @@ function AppShellInterno() {
   }
 
   const sinServidores = servidores && servidores.length === 0
+  const ampliada = llamadaAmpliada && !mostrarInicio && !herramienta && canal?.tipo === 'voz'
 
   function alternarPanel(p: Exclude<PanelDerecho, null>) {
     setPanel((actual) => (actual === p ? null : p))
@@ -456,7 +459,7 @@ function AppShellInterno() {
       )
     ) : canal && yo ? (
       canal.tipo === 'voz' ? (
-        <VoicePanel canal={canal} yo={yo} voz={voz} />
+        <VoicePanel canal={canal} yo={yo} voz={voz} ampliada={llamadaAmpliada} onAmpliar={setLlamadaAmpliada} />
       ) : (
         <ChatPanel key={canal.id} canal={canal} yo={yo} permisos={permisos} onVerPerfil={setPerfilAbierto} />
       )
@@ -547,13 +550,14 @@ function AppShellInterno() {
 
       {/* Mientras estás en una llamada (aunque mires otra cosa) */}
       <div className="fixed bottom-5 left-5 z-30 w-72 max-w-[calc(100vw-2.5rem)] [&>*]:shadow-[var(--sombra)] [&>*]:backdrop-blur">
-        <VozBar voz={voz} />
+        {/* Si ya estás mirando esa llamada, los controles están en pantalla: la barrita sobra. */}
+        {!(!mostrarInicio && !herramienta && canal?.tipo === 'voz' && voz.canal?.id === canal.id) && <VozBar voz={voz} />}
       </div>
 
       {/* Paneles flotantes */}
       <div className="flex min-h-0 flex-1 gap-3 px-3 pb-3">
         {/* Pestañas del servidor en columna (si el usuario lo eligió) */}
-        {!mostrarInicio && servidor && disposicion === 'vertical' && (
+        {!mostrarInicio && servidor && disposicion === 'vertical' && !ampliada && (
           <aside className="panel hidden w-64 shrink-0 flex-col overflow-hidden md:flex" aria-label={`Secciones de ${servidor.nombre}`}>
             <SeccionesServidor
               servidorId={servidor.id}
@@ -578,13 +582,13 @@ function AppShellInterno() {
         <main className="panel flex min-w-0 flex-1 flex-col overflow-hidden">
           {mostrarInicio ? (
             <div className="flex h-14 shrink-0 items-center gap-3 border-b border-border px-4">{encabezado}</div>
-          ) : (
+          ) : ampliada ? null : (
             encabezado
           )}
           <div className="flex min-h-0 flex-1 flex-col">{contenido}</div>
         </main>
 
-        {!mostrarInicio && servidor && panelContenido && (
+        {!mostrarInicio && servidor && panelContenido && !ampliada && (
           <>
             <div className="panel hidden shrink-0 overflow-hidden lg:block">{panelContenido}</div>
             <div className="panel fixed inset-y-3 right-3 z-30 overflow-hidden lg:hidden">{panelContenido}</div>

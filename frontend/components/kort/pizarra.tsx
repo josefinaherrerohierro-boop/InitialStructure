@@ -51,8 +51,10 @@ export function Pizarra({
   useEffect(() => {
     const el = contenedor.current
     if (!el) return
+    // Lo más grande posible que entre en el lugar libre, manteniendo la proporción 16:10.
     const observador = new ResizeObserver(([entrada]) => {
-      const ancho = Math.floor(entrada.contentRect.width)
+      const { width, height } = entrada.contentRect
+      const ancho = Math.max(200, Math.floor(Math.min(width, height / 0.625)))
       setTamanio({ ancho, alto: Math.floor(ancho * 0.625) })
     })
     observador.observe(el)
@@ -100,7 +102,7 @@ export function Pizarra({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 p-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-2 p-3">
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex gap-1 rounded-lg border border-border bg-surface p-1">
           <button
@@ -161,7 +163,7 @@ export function Pizarra({
           Borrar todo
         </button>
       </div>
-      <div ref={contenedor} className="w-full">
+      <div ref={contenedor} className="flex min-h-0 w-full flex-1 items-center justify-center">
         <canvas
           ref={canvas}
           role="img"

@@ -18,6 +18,8 @@ export type Servidor = {
   fecha_creacion: string
   expira_en?: string | null
   icono_url?: string | null
+  /** true si se borra con su propia contraseña; false = con la de la cuenta del dueño. */
+  tiene_clave_borrado?: boolean
 }
 export type TipoCanal = 'texto' | 'voz'
 export type Canal = {
@@ -191,8 +193,18 @@ export const getServidoresDeUsuario = (usuarioId: number) =>
   request<Servidor[]>(`/usuarios/${usuarioId}/servidores`)
 
 // Servidores
-export const crearServidor = (nombre: string, duracionHoras: number | null = null) =>
-  request<Servidor>('/servidores/', { method: 'POST', body: { nombre, duracion_horas: duracionHoras } })
+export const crearServidor = (nombre: string, claveBorrado: string, duracionHoras: number | null = null) =>
+  request<Servidor>('/servidores/', {
+    method: 'POST',
+    body: { nombre, clave_borrado: claveBorrado, duracion_horas: duracionHoras },
+  })
+
+/** Elegir o cambiar la contraseña para borrar el servidor (se confirma con la de la cuenta). */
+export const cambiarClaveBorrado = (id: number, passwordCuenta: string, nuevaClave: string) =>
+  request<Servidor>(`/servidores/${id}/clave-borrado`, {
+    method: 'PUT',
+    body: { password_cuenta: passwordCuenta, nueva_clave: nuevaClave },
+  })
 
 /** Guarda el orden en que el usuario quiere ver sus servidores. */
 export const ordenarServidores = (servidorIds: number[]) =>
@@ -260,7 +272,9 @@ export const actualizarServidor = (
 ) =>
   request<Servidor>(`/servidores/${id}`, { method: 'PATCH', body: datos })
 
-export const borrarServidor = (id: number) => request<void>(`/servidores/${id}`, { method: 'DELETE' })
+/** Borrar el servidor: pide la contraseña de borrado (o la de la cuenta si no tiene una). */
+export const borrarServidor = (id: number, clave: string) =>
+  request<void>(`/servidores/${id}`, { method: 'DELETE', body: { clave } })
 
 export const transferirServidor = (id: number, nuevoDuenioId: number) =>
   request<Servidor>(`/servidores/${id}/transferir`, { method: 'POST', body: { nuevo_duenio_id: nuevoDuenioId } })

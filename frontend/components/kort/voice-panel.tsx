@@ -5,6 +5,8 @@ import useSWR from 'swr'
 import {
   Gamepad2,
   Headphones,
+  Maximize2,
+  Minimize2,
   Mic,
   MicOff,
   MonitorUp,
@@ -50,7 +52,20 @@ type Tarjeta = {
 type Pestania = 'llamada' | 'pizarra' | 'juegos'
 
 /** Pantalla de un canal de voz: entrar, ver/escuchar, cámara, pantalla, pizarra y juegos. */
-export function VoicePanel({ canal, yo, voz }: { canal: Canal; yo: Usuario; voz: Voz }) {
+export function VoicePanel({
+  canal,
+  yo,
+  voz,
+  ampliada = false,
+  onAmpliar,
+}: {
+  canal: Canal
+  yo: Usuario
+  voz: Voz
+  /** Ampliada = se ocultan los paneles de los costados para que la llamada ocupe todo. */
+  ampliada?: boolean
+  onAmpliar?: (v: boolean) => void
+}) {
   const [pestania, setPestania] = useState<Pestania>('llamada')
   const [destacado, setDestacado] = useState<string | null>(null)
   const enEsteCanal = voz.canal?.id === canal.id
@@ -87,7 +102,7 @@ export function VoicePanel({ canal, yo, voz }: { canal: Canal; yo: Usuario; voz:
     const principal = tarjetas.find((t) => t.clave === destacado) ?? tarjetas.find((t) => t.tipo === 'pantalla')
     const resto = principal ? tarjetas.filter((t) => t !== principal) : tarjetas
 
-    const renderTarjeta = (t: Tarjeta, grande = false) => {
+    const renderTarjeta = (t: Tarjeta, grande = false, lateral = false) => {
       const habla = !t.participante.silenciado && voz.hablando[t.participante.usuario_id]
       return (
         <button
@@ -96,7 +111,8 @@ export function VoicePanel({ canal, yo, voz }: { canal: Canal; yo: Usuario; voz:
           onClick={() => setDestacado(destacado === t.clave ? null : t.clave)}
           className={cn(
             'relative flex items-center justify-center overflow-hidden rounded-2xl border bg-surface transition-all',
-            grande ? 'aspect-video w-full max-w-5xl' : 'aspect-video w-full sm:w-64',
+            // La grande ocupa todo el espacio libre; las del costado son chicas.
+            grande ? 'size-full min-h-48 bg-black' : lateral ? 'aspect-video w-48 shrink-0 @3xl:w-full' : 'aspect-video w-full sm:w-64',
             habla && t.tipo !== 'pantalla' ? 'border-success ring-2 ring-success/40' : 'border-border',
           )}
           aria-label={`${t.participante.username}${t.tipo === 'pantalla' ? ' (pantalla)' : ''}. Tocá para ${destacado === t.clave ? 'achicar' : 'agrandar'}`}
@@ -105,7 +121,8 @@ export function VoicePanel({ canal, yo, voz }: { canal: Canal; yo: Usuario; voz:
             <VideoStream
               stream={t.stream}
               espejo={t.esYo && t.tipo === 'camara'}
-              className={t.tipo === 'pantalla' ? 'object-contain' : undefined}
+              // object-contain: la imagen entera, sin deformarse ni recortarse (bandas negras si hace falta).
+              className={t.tipo === 'pantalla' || grande ? 'object-contain' : undefined}
             />
           ) : (
             <Avatar nombre={t.participante.username} tamanio={grande ? 'xl' : 'lg'} />
@@ -134,7 +151,7 @@ export function VoicePanel({ canal, yo, voz }: { canal: Canal; yo: Usuario; voz:
 
     return (
       <div className="flex min-h-0 flex-1 flex-col">
-        <div role="tablist" className="flex shrink-0 gap-1 border-b border-border px-4 py-2">
+        <div role="tablist" className="flex shrink-0 items-center gap-1 border-b border-border px-4 py-2">
           {(
             [
               ['llamada', 'Llamada', Users],
@@ -160,16 +177,39 @@ export function VoicePanel({ canal, yo, voz }: { canal: Canal; yo: Usuario; voz:
               )}
             </button>
           ))}
+          {onAmpliar && (
+            <button
+              type="button"
+              onClick={() => onAmpliar(!ampliada)}
+              aria-pressed={ampliada}
+              title={ampliada ? 'Volver a ver los paneles' : 'Ocultar los paneles para que la llamada ocupe todo'}
+              className="ml-auto flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-elevated hover:text-foreground"
+            >
+              {ampliada ? <Minimize2 className="size-4" aria-hidden /> : <Maximize2 className="size-4" aria-hidden />}
+              <span className="hidden sm:inline">{ampliada ? 'Achicar' : 'Ampliar'}</span>
+            </button>
+          )}
         </div>
 
-        {pestania === 'llamada' && (
-          <div className="scrollbar-thin flex min-h-0 flex-1 flex-col items-center gap-4 overflow-y-auto p-4">
-            {principal && renderTarjeta(principal, true)}
-            <div className={cn('flex w-full flex-wrap justify-center gap-3', !principal && 'flex-1 content-center')}>
+        {pestania === 'llamada' &&
+          (principal ? (
+            // Algo destacado (por ejemplo, una pantalla compartida): ocupa casi todo y
+            // las cámaras van en una columna al costado (o en una fila abajo si es angosto).
+            <div className="@container flex min-h-0 flex-1">
+              <div className="flex min-h-0 flex-1 flex-col gap-3 p-3 @3xl:flex-row">
+                <div className="flex min-h-0 min-w-0 flex-1">{renderTarjeta(principal, true)}</div>
+                {resto.length > 0 && (
+                  <div className="scrollbar-thin flex shrink-0 gap-3 overflow-auto @3xl:w-56 @3xl:flex-col">
+                    {resto.map((t) => renderTarjeta(t, false, true))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="scrollbar-thin flex min-h-0 flex-1 flex-wrap content-center items-center justify-center gap-3 overflow-y-auto p-4">
               {resto.map((t) => renderTarjeta(t))}
             </div>
-          </div>
-        )}
+          ))}
         {pestania === 'pizarra' && <Pizarra trazos={voz.trazos} onTrazo={voz.dibujar} onLimpiar={voz.limpiarPizarra} />}
         {pestania === 'juegos' && <JuegosLlamada voz={voz} miId={yo.id} />}
 

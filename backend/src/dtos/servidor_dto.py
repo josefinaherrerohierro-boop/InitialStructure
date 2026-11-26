@@ -6,6 +6,7 @@ from pydantic import BaseModel
 class CreateServidorDTO(BaseModel):
     nombre: str
     duracion_horas: int | None = None
+    clave_borrado: str | None = None
 
 
 class UpdateServidorDTO(BaseModel):
@@ -23,6 +24,7 @@ class ServidorResponseDTO(BaseModel):
     fecha_creacion: datetime
     expira_en: datetime | None = None  # None = permanente
     icono_url: str | None = None  # foto del servidor
+    tiene_clave_borrado: bool = False  # si se borra con su propia contraseña
 
     model_config = {"from_attributes": True}
 

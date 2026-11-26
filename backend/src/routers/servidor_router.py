@@ -11,6 +11,8 @@ from src.dtos.servidor_dto import (
 )
 from src.middlewares.auth_middleware import get_current_user
 from src.schemas.servidor_schema import (
+    BorrarServidorSchema,
+    CambiarClaveBorradoSchema,
     CreateServidorSchema,
     TransferirServidorSchema,
     UpdateServidorSchema,
@@ -51,13 +53,26 @@ def modificar_servidor(
     return ServidorService(db).update(servidor_id, dto, actual.id)
 
 
+# Borrar el servidor: solo el dueño, con la contraseña de borrado (en el cuerpo).
 @router.delete("/{servidor_id}", status_code=status.HTTP_204_NO_CONTENT)
 def borrar_servidor(
     servidor_id: int,
+    payload: BorrarServidorSchema,
     db: Session = Depends(get_db),
     actual: Usuario = Depends(get_current_user),
 ):
-    ServidorService(db).delete(servidor_id, actual.id)
+    ServidorService(db).delete(servidor_id, actual.id, payload.clave)
+
+
+# Elegir o cambiar la contraseña de borrado (se confirma con la contraseña de la cuenta).
+@router.put("/{servidor_id}/clave-borrado", response_model=ServidorResponseDTO)
+def cambiar_clave_borrado(
+    servidor_id: int,
+    payload: CambiarClaveBorradoSchema,
+    db: Session = Depends(get_db),
+    actual: Usuario = Depends(get_current_user),
+):
+    return ServidorService(db).cambiar_clave_borrado(servidor_id, payload.password_cuenta, payload.nueva_clave, actual.id)
 
 
 # HU10 — Transferir el servidor a otro miembro (solo el dueño).

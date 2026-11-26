@@ -6,6 +6,8 @@ class CreateServidorSchema(BaseModel):
     # Servidor temporal: se borra solo después de estas horas (máximo 30 días).
     # Si no se manda, el servidor es permanente.
     duracion_horas: int | None = Field(default=None, ge=1, le=720)
+    # Contraseña que se va a pedir para borrar el servidor (bcrypt usa hasta 72 bytes).
+    clave_borrado: str = Field(min_length=4, max_length=72)
 
 
 class UpdateServidorSchema(BaseModel):
@@ -27,3 +29,14 @@ class OrdenServidoresSchema(BaseModel):
 class TransferirServidorSchema(BaseModel):
     # HU10: id del miembro que pasa a ser el nuevo dueño.
     nuevo_duenio_id: int = Field(gt=0)
+
+
+class BorrarServidorSchema(BaseModel):
+    # La contraseña de borrado del servidor (o la de tu cuenta, si el servidor no tiene una).
+    clave: str = Field(min_length=1, max_length=72)
+
+
+class CambiarClaveBorradoSchema(BaseModel):
+    # Para cambiarla hay que confirmar con la contraseña de la cuenta (sirve si te la olvidaste).
+    password_cuenta: str = Field(min_length=1, max_length=72)
+    nueva_clave: str = Field(min_length=4, max_length=72)

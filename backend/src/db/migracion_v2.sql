@@ -321,3 +321,7 @@ CREATE TABLE IF NOT EXISTS directos_fijados (
     PRIMARY KEY (usuario_id, otro_id),
     CONSTRAINT chk_fijado_distinto CHECK (usuario_id <> otro_id)
 );
+
+
+-- Contraseña para borrar el servidor ----------------------------------------
+ALTER TABLE servidores ADD COLUMN IF NOT EXISTS clave_borrado_hash VARCHAR(255);

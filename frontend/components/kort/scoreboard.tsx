@@ -142,7 +142,16 @@ export function ScoreboardView({
           </div>
         </div>
 
-        {top.length > 0 && <Podio top={top} onVerPerfil={onVerPerfil} />}
+        {/* El podio aparece recién cuando alguien sumó puntos. */}
+        {top.some((p) => p.puntos > 0) ? (
+          <Podio top={top.filter((p) => p.puntos > 0)} onVerPerfil={onVerPerfil} />
+        ) : (
+          tabla && (
+            <p className="rounded-2xl border border-dashed border-border p-5 text-center text-sm text-muted-foreground">
+              Todavía nadie sumó puntos. El podio aparece cuando alguien gane un juego en una llamada o un moderador dé puntos.
+            </p>
+          )
+        )}
 
         <ol className="flex flex-col overflow-hidden rounded-xl border border-border">
           <li className="grid grid-cols-[2.5rem_1fr_4.5rem_4.5rem_4.5rem] gap-2 bg-surface px-3 py-2 text-xs font-semibold text-muted-foreground">

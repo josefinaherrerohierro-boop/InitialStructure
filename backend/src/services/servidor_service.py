@@ -16,9 +16,11 @@ from src.repositories.historial_repository import HistorialRepository
 from src.repositories.miembro_repository import MiembroRepository
 from src.repositories.rol_repository import RolRepository
 from src.repositories.servidor_repository import ServidorRepository
+from src.repositories.usuario_repository import UsuarioRepository
 from src.services.archivo_service import ArchivoService
 from src.services.permisos_service import PermisosService
 from src.utils.errors import ForbiddenError, UnprocessableError
+from src.utils.hash import hash_password, verify_password
 from src.utils.fechas import ahora
 
 
@@ -48,8 +50,12 @@ class ServidorService:
         """
         nombre = self._limpiar_nombre(dto.nombre)
         expira_en = ahora() + timedelta(hours=dto.duracion_horas) if dto.duracion_horas else None
+        clave = (dto.clave_borrado or "").strip()
+        if len(clave) < 4:
+            raise UnprocessableError("La contraseña para borrar el servidor tiene que tener al menos 4 caracteres")
         try:
             servidor = self.servidores.create(nombre=nombre, duenio_id=usuario_id, expira_en=expira_en)
+            servidor.clave_borrado_hash = hash_password(clave)
             self.miembros.create(usuario_id=usuario_id, servidor_id=servidor.id)
             self.canales.create(servidor_id=servidor.id, nombre="general", tipo="texto")
             everyone = self.roles.create(
@@ -133,12 +139,41 @@ class ServidorService:
 
         return to_servidor_response(servidor)
 
-    def delete(self, servidor_id: int, actual_id: int) -> None:
+    def delete(self, servidor_id: int, actual_id: int, clave: str = "") -> None:
+        """Solo el dueño, y con la contraseña de borrado del servidor (o la de su
+        cuenta, si el servidor es viejo o fue transferido y no tiene una)."""
         servidor = self.permisos.obtener_servidor(servidor_id)
         self.permisos.exigir_duenio(servidor, actual_id)
+        if not self._clave_correcta(servidor, actual_id, clave):
+            raise ForbiddenError("La contraseña no es correcta")
         self.historial.cerrar_todos(servidor, "servidor_borrado")
         self.servidores.delete(servidor)
         self.db.commit()
+
+    def cambiar_clave_borrado(self, servidor_id: int, password_cuenta: str, nueva: str, actual_id: int) -> ServidorResponseDTO:
+        """Elegir o cambiar la contraseña de borrado. Se confirma con la contraseña
+        de la cuenta (así se puede recuperar si te la olvidaste)."""
+        servidor = self.permisos.obtener_servidor(servidor_id)
+        self.permisos.exigir_duenio(servidor, actual_id)
+        if not self._password_de_cuenta_correcta(actual_id, password_cuenta):
+            raise ForbiddenError("La contraseña de tu cuenta no es correcta")
+        nueva = nueva.strip()
+        if len(nueva) < 4:
+            raise UnprocessableError("La contraseña tiene que tener al menos 4 caracteres")
+        self.servidores.update(servidor, clave_borrado_hash=hash_password(nueva))
+        self.db.commit()
+        return to_servidor_response(servidor)
+
+    def _password_de_cuenta_correcta(self, usuario_id: int, password: str) -> bool:
+        usuario = UsuarioRepository(self.db).find_by_id(usuario_id)
+        return usuario is not None and bool(password) and verify_password(password, usuario.password_hash)
+
+    def _clave_correcta(self, servidor, actual_id: int, clave: str) -> bool:
+        if not clave:
+            return False
+        if servidor.clave_borrado_hash:
+            return verify_password(clave.strip(), servidor.clave_borrado_hash)
+        return self._password_de_cuenta_correcta(actual_id, clave)
 
     # ---------- HU10: transferir el servidor ----------
     def transferir(self, servidor_id: int, dto: TransferirServidorDTO, actual_id: int) -> ServidorResponseDTO:
@@ -151,7 +186,9 @@ class ServidorService:
         if not self.permisos.es_miembro(servidor.id, dto.nuevo_duenio_id):
             raise UnprocessableError("El nuevo dueño tiene que ser un miembro actual del servidor")
 
-        self.servidores.update(servidor, duenio_id=dto.nuevo_duenio_id)
+        # El nuevo dueño no conoce la contraseña de borrado: se saca, y hasta que
+        # elija una se le pide la de su cuenta.
+        self.servidores.update(servidor, duenio_id=dto.nuevo_duenio_id, clave_borrado_hash=None)
         self.db.commit()
         self.db.refresh(servidor)
         return to_servidor_response(servidor)

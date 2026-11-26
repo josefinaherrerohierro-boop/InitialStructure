@@ -25,7 +25,7 @@ export function JuegosLlamada({ voz, miId }: { voz: Voz; miId: number }) {
 
   if (!juego) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-6 p-6">
+      <div className="@container flex flex-1 flex-col items-center justify-center gap-6 p-6">
         <div className="flex flex-col items-center gap-2 text-center">
           <span className="flex size-12 items-center justify-center rounded-2xl bg-primary/15 text-primary">
             <Gamepad2 className="size-6" aria-hidden />
@@ -35,7 +35,7 @@ export function JuegosLlamada({ voz, miId }: { voz: Voz; miId: number }) {
             Elegí un juego y esperá a que alguien de la llamada se una. Los puntos van al scoreboard del servidor.
           </p>
         </div>
-        <div className="grid w-full max-w-lg gap-3 sm:grid-cols-2">
+        <div className="grid w-full max-w-2xl gap-4 @xl:grid-cols-2">
           {JUEGOS.map((j) => (
             <button
               key={j.id}
@@ -57,8 +57,8 @@ export function JuegosLlamada({ voz, miId }: { voz: Voz; miId: number }) {
   const [j1, j2] = juego.jugadores
 
   return (
-    <div className="flex flex-1 flex-col items-center gap-5 overflow-y-auto p-6">
-      <div className="flex w-full max-w-md items-center justify-between gap-3">
+    <div className="@container flex flex-1 flex-col items-center justify-center-safe gap-5 overflow-y-auto p-6">
+      <div className="flex w-full max-w-xl items-center justify-between gap-3">
         <h2 className="font-semibold">{juego.nombre.charAt(0).toUpperCase() + juego.nombre.slice(1)}</h2>
         {(soyJugador || juego.estado === 'terminado') && (
           <Boton variante="fantasma" className="h-8 px-2 text-xs" onClick={() => voz.accionJuego({ accion: 'cancelar' })}>
@@ -110,13 +110,13 @@ export function JuegosLlamada({ voz, miId }: { voz: Voz; miId: number }) {
                   disabled={!puedo}
                   aria-label={`Casilla ${i + 1}${celda ? `: ${nombreDe(celda)}` : ''}`}
                   className={cn(
-                    'flex size-20 items-center justify-center rounded-xl border-2 bg-surface transition-colors sm:size-24',
+                    'flex size-20 items-center justify-center rounded-2xl border-2 bg-surface transition-colors @xl:size-28 @3xl:size-32',
                     ganadora ? 'border-primary bg-primary/15' : 'border-border',
                     puedo && 'hover:border-primary/50',
                   )}
                 >
-                  {celda === j1.usuario_id && <X className="size-10 text-primary" aria-hidden />}
-                  {celda !== null && celda === j2?.usuario_id && <Circle className="size-9 text-success" aria-hidden />}
+                  {celda === j1.usuario_id && <X className="size-1/2 text-primary" aria-hidden />}
+                  {celda !== null && celda === j2?.usuario_id && <Circle className="size-[45%] text-success" aria-hidden />}
                 </button>
               )
             })}
@@ -153,9 +153,9 @@ export function JuegosLlamada({ voz, miId }: { voz: Voz; miId: number }) {
                       key={p.valor}
                       type="button"
                       onClick={() => voz.accionJuego({ accion: 'jugar', eleccion: p.valor })}
-                      className="flex w-24 flex-col items-center gap-1 rounded-2xl border-2 border-border bg-surface py-4 transition-colors hover:border-primary/60"
+                      className="flex w-24 flex-col items-center gap-1 rounded-2xl border-2 border-border bg-surface py-4 transition-colors hover:border-primary/60 @xl:w-32 @xl:py-6"
                     >
-                      <span className="text-4xl" aria-hidden>
+                      <span className="text-4xl @xl:text-6xl" aria-hidden>
                         {p.emoji}
                       </span>
                       <span className="text-sm">{p.nombre}</span>

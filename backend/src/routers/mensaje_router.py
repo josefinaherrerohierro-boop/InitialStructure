@@ -65,7 +65,7 @@ def editar_mensaje(
     return MensajeService(db).editar(mensaje_id, dto, actual.id)
 
 
-# HU8 — Borrar (el autor o un moderador).
+# HU8 — Borrar (quien lo escribió o el dueño del servidor).
 @router.delete("/mensajes/{mensaje_id}", status_code=status.HTTP_204_NO_CONTENT)
 def borrar_mensaje(
     mensaje_id: int,

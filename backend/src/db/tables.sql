@@ -66,7 +66,10 @@ CREATE TABLE servidores (
     -- Servidores temporales: si tiene fecha, se borra solo al llegar a ella.
     expira_en       TIMESTAMP,
     -- Foto del servidor (la elige el dueño). NULL = se muestran las iniciales.
-    icono_url       VARCHAR(255)
+    icono_url       VARCHAR(255),
+    -- Contraseña para borrar el servidor (se elige al crearlo; se guarda con
+    -- bcrypt, nunca en texto plano). NULL = se pide la contraseña de la cuenta del dueño.
+    clave_borrado_hash VARCHAR(255)
 );
 
 

@@ -236,9 +236,11 @@ export function ResumenServidor({
           <Tarjeta titulo="Podio" Icono={Trophy} color="bg-warning/15 text-warning" onVer={() => onVista('scoreboard')}>
             {!tabla ? (
               <div className="h-16 animate-pulse rounded-xl bg-elevated" />
+            ) : !tabla.some((p) => p.puntos > 0) ? (
+              <Vacio>Todavía nadie sumó puntos. ¡Ganá un juego en una llamada!</Vacio>
             ) : (
               <ol className="flex flex-col gap-2">
-                {tabla.slice(0, 3).map((p) => (
+                {tabla.filter((p) => p.puntos > 0).slice(0, 3).map((p) => (
                   <li key={p.usuario.id} className="flex items-center gap-2.5 text-sm">
                     <span className="w-5 text-center font-display font-bold text-muted-foreground">{p.posicion}</span>
                     <Avatar nombre={p.usuario.username} url={p.usuario.avatar_url} tamanio="sm" />

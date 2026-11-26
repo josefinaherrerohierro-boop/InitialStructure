@@ -14,6 +14,7 @@ import type { Permisos } from '@/lib/kort'
 import { useToast } from '../toast-provider'
 import { Boton, Campo, ErrorFormulario, Input } from '../ui'
 import { Confirmar, Seccion } from './confirmar'
+import { ClaveBorrado } from './clave-borrado'
 import { FotoServidor } from './foto-servidor'
 import { MiFotoServidor } from './mi-foto-servidor'
 import { useCambiosPendientes } from '../cambios-pendientes'
@@ -75,6 +76,7 @@ export function GeneralTab({
   return (
     <div className="flex flex-col gap-6">
       {permisos.esDuenio && <FotoServidor servidor={servidor} onActualizar={onActualizar} />}
+      {permisos.esDuenio && <ClaveBorrado servidor={servidor} onActualizar={onActualizar} />}
 
       {permisos.esDuenio && (
         <Seccion titulo="Nombre del servidor">
@@ -213,24 +215,30 @@ export function GeneralTab({
       <Confirmar
         abierto={dialogo === 'borrar'}
         titulo="¿Borrar el servidor?"
-        descripcion="Para confirmar, escribí el nombre exacto del servidor."
+        descripcion={
+          servidor.tiene_clave_borrado
+            ? 'Se borra para siempre, con todos sus canales y mensajes. Escribí la contraseña de borrado que elegiste al crearlo.'
+            : 'Se borra para siempre, con todos sus canales y mensajes. Este servidor no tiene contraseña de borrado: escribí la contraseña de tu cuenta.'
+        }
         textoBoton="Borrar para siempre"
-        deshabilitado={confirmacionNombre !== servidor.nombre}
+        deshabilitado={!confirmacionNombre}
         onCerrar={() => {
           setConfirmacionNombre('')
           setDialogo(null)
         }}
         onConfirmar={async () => {
-          await borrarServidor(servidor.id)
+          await borrarServidor(servidor.id, confirmacionNombre)
           toast.exito('El servidor se borró.')
           onSalio()
         }}
       >
         <Input
-          aria-label="Nombre del servidor"
+          type="password"
+          autoComplete="off"
+          aria-label={servidor.tiene_clave_borrado ? 'Contraseña de borrado del servidor' : 'Contraseña de tu cuenta'}
           value={confirmacionNombre}
           onChange={(e) => setConfirmacionNombre(e.target.value)}
-          placeholder={servidor.nombre}
+          placeholder={servidor.tiene_clave_borrado ? 'Contraseña de borrado' : 'Contraseña de tu cuenta'}
         />
       </Confirmar>
     </div>

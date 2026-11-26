@@ -32,6 +32,8 @@ export const DURACIONES: { horas: number | null; etiqueta: string }[] = [
 export function CrearServidorModal({ abierto, onCerrar, onCreado }: BaseProps & { onCreado: (s: Servidor) => void }) {
   const [nombre, setNombre] = useState('')
   const [duracion, setDuracion] = useState<number | null>(null)
+  const [clave, setClave] = useState('')
+  const [clave2, setClave2] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [cargando, setCargando] = useState(false)
   const toast = useToast()
@@ -39,6 +41,8 @@ export function CrearServidorModal({ abierto, onCerrar, onCreado }: BaseProps & 
   function cerrar() {
     setNombre('')
     setDuracion(null)
+    setClave('')
+    setClave2('')
     setError(null)
     onCerrar()
   }
@@ -46,9 +50,17 @@ export function CrearServidorModal({ abierto, onCerrar, onCreado }: BaseProps & 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+    if (clave.length < 4) {
+      setError('La contraseña para borrar el servidor tiene que tener al menos 4 caracteres.')
+      return
+    }
+    if (clave !== clave2) {
+      setError('Las dos contraseñas no coinciden.')
+      return
+    }
     setCargando(true)
     try {
-      const s = await crearServidor(nombre.trim(), duracion)
+      const s = await crearServidor(nombre.trim(), clave, duracion)
       toast.exito(`Listo, creaste "${s.nombre}".`)
       onCreado(s)
       cerrar()
@@ -100,6 +112,16 @@ export function CrearServidorModal({ abierto, onCerrar, onCreado }: BaseProps & 
               : 'El servidor queda hasta que lo borres.'}
           </p>
         </fieldset>
+        <Campo
+          id="servidor-clave"
+          etiqueta="Contraseña para borrar el servidor"
+          ayuda="Te la vamos a pedir si algún día querés borrarlo. Si te la olvidás, la podés cambiar con la contraseña de tu cuenta."
+        >
+          <Input id="servidor-clave" type="password" autoComplete="new-password" value={clave} onChange={(e) => setClave(e.target.value)} />
+        </Campo>
+        <Campo id="servidor-clave2" etiqueta="Repetí la contraseña">
+          <Input id="servidor-clave2" type="password" autoComplete="new-password" value={clave2} onChange={(e) => setClave2(e.target.value)} />
+        </Campo>
         <ErrorFormulario mensaje={error} />
         <div className="flex justify-end gap-2">
           <Boton type="button" variante="fantasma" onClick={cerrar}>

@@ -73,6 +73,10 @@ export function AppShell() {
           toast.error(mensajeDeError(err))
         },
         shouldRetryOnError: false,
+        // Datos guardados nuevos cada vez que se entra a la app: si antes había
+        // otra cuenta (cerrar sesión → crear cuenta o entrar con otra), no se
+        // mezclan sus servidores con los de la cuenta nueva.
+        provider: () => new Map(),
       }}
     >
       <AppShellInterno />

@@ -86,15 +86,15 @@ class MensajeService:
         self.db.commit()
         return self._respuesta(mensaje, canal, actual_id)
 
-    # ---------- HU8: borrar (el autor o el dueño del servidor) ----------
+    # ---------- HU8: borrar (el autor o el dueño/moderador del servidor) ----------
     def borrar(self, mensaje_id: int, actual_id: int) -> None:
         mensaje = self._buscar_mensaje_o_404(mensaje_id)
         canal = self._buscar_canal_o_404(mensaje.canal_id)
         servidor = self.permisos.obtener_servidor(canal.servidor_id)
 
         es_autor = mensaje.autor_id == actual_id
-        if not es_autor and not self.permisos.es_duenio(servidor, actual_id):
-            raise ForbiddenError("Solo quien escribió el mensaje o el dueño del servidor pueden borrarlo")
+        if not es_autor and not self.permisos.es_moderador(servidor, actual_id):
+            raise ForbiddenError("Solo el autor o un moderador pueden borrar este mensaje")
 
         self.mensajes.delete(mensaje)
         self.db.commit()

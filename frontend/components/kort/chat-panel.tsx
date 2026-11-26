@@ -275,8 +275,8 @@ export function ChatPanel({
       enviar={(contenido, adjunto) => enviarMensaje(canal.id, contenido, adjunto)}
       onEncuesta={() => setCreandoEncuesta(true)}
       itemProps={(m) => ({
-        // Igual que el backend: quien lo escribió o el dueño del servidor.
-        puedeBorrar: m.autor_id === yo.id || permisos.esDuenio,
+        // Igual que el backend: el autor o un moderador (HU8).
+        puedeBorrar: m.autor_id === yo.id || permisos.esModerador,
         puedeFijar: permisos.esModerador,
         onVerPerfil,
       })}

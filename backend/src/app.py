@@ -4,12 +4,13 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from src.config.env import settings
 from src.db.connection import SessionLocal
-from src.middlewares.error_middleware import app_error_handler
+from src.middlewares.error_middleware import app_error_handler, validation_error_handler
 from src.routers import (
     amistad_router,
     archivo_router,
@@ -86,6 +87,7 @@ app.add_middleware(
 )
 
 app.add_exception_handler(AppError, app_error_handler)
+app.add_exception_handler(RequestValidationError, validation_error_handler)  # 422 en español
 
 app.include_router(usuario_router.router, prefix="/api")
 app.include_router(auth_router.router, prefix="/api")

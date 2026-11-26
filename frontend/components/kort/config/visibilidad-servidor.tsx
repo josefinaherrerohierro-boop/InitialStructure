@@ -15,14 +15,33 @@ export function VisibilidadServidor({ servidor, onActualizar }: { servidor: Serv
   const [publico, setPublico] = useState(!!servidor.publico)
   const [descripcion, setDescripcion] = useState(servidor.descripcion ?? '')
   const [guardando, setGuardando] = useState(false)
-  const cambio = publico !== !!servidor.publico || descripcion.trim() !== (servidor.descripcion ?? '')
+  const [cambiandoVisibilidad, setCambiandoVisibilidad] = useState(false)
+  // Solo la descripción necesita "Guardar": Público/Privado se guarda apenas lo tocás.
+  const cambio = descripcion.trim() !== (servidor.descripcion ?? '')
   useCambiosPendientes(cambio)
 
-  async function guardar() {
+  async function cambiarVisibilidad(valor: boolean) {
+    if (valor === publico || cambiandoVisibilidad) return
+    const anterior = publico
+    setPublico(valor) // se ve al instante; si falla, vuelve atrás
+    setCambiandoVisibilidad(true)
+    try {
+      await actualizarServidor(servidor.id, { publico: valor })
+      toast.exito(valor ? 'Ahora el servidor es público: aparece en Explorar.' : 'Ahora el servidor es privado: solo se entra con invitación.')
+      onActualizar()
+    } catch (err) {
+      setPublico(anterior)
+      toast.error(mensajeDeError(err))
+    } finally {
+      setCambiandoVisibilidad(false)
+    }
+  }
+
+  async function guardarDescripcion() {
     setGuardando(true)
     try {
-      await actualizarServidor(servidor.id, { publico, descripcion: descripcion.trim() })
-      toast.exito(publico ? 'Ahora el servidor es público: aparece en Explorar.' : 'Ahora el servidor es privado: solo se entra con invitación.')
+      await actualizarServidor(servidor.id, { descripcion: descripcion.trim() })
+      toast.exito('Descripción guardada.')
       onActualizar()
     } catch (err) {
       toast.error(mensajeDeError(err))
@@ -32,7 +51,7 @@ export function VisibilidadServidor({ servidor, onActualizar }: { servidor: Serv
   }
 
   return (
-    <Seccion titulo="¿Quién puede entrar?" descripcion="Un servidor público aparece en Explorar y cualquiera entra con un clic. Uno privado solo con invitación.">
+    <Seccion titulo="¿Quién puede entrar?" descripcion="Se guarda apenas elegís. Un servidor público aparece en Explorar y cualquiera entra con un clic; uno privado, solo con invitación.">
       <div className="grid grid-cols-2 gap-2">
         {(
           [
@@ -43,7 +62,8 @@ export function VisibilidadServidor({ servidor, onActualizar }: { servidor: Serv
           <button
             key={titulo}
             type="button"
-            onClick={() => setPublico(valor)}
+            onClick={() => cambiarVisibilidad(valor)}
+            disabled={cambiandoVisibilidad}
             aria-pressed={publico === valor}
             className={cn(
               'flex items-center gap-3 rounded-xl border-2 px-3 py-2.5 text-left transition-colors',
@@ -71,8 +91,8 @@ export function VisibilidadServidor({ servidor, onActualizar }: { servidor: Serv
         <span className="text-xs font-normal text-muted-foreground">{descripcion.length}/300</span>
       </label>
       <div>
-        <Boton onClick={guardar} cargando={guardando} disabled={!cambio}>
-          Guardar
+        <Boton onClick={guardarDescripcion} cargando={guardando} disabled={!cambio}>
+          Guardar descripción
         </Boton>
       </div>
     </Seccion>

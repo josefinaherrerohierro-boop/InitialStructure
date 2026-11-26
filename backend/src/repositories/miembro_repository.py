@@ -108,6 +108,16 @@ class MiembroRepository:
             .count()
         )
 
+    def list_baneados(self, servidor_id: int) -> list[tuple[Miembro, Usuario]]:
+        """Los baneados del servidor (su fila queda en miembros con baneado = TRUE)."""
+        return (
+            self.db.query(Miembro, Usuario)
+            .join(Usuario, Usuario.id == Miembro.usuario_id)
+            .filter(Miembro.servidor_id == servidor_id, Miembro.baneado.is_(True))
+            .order_by(Usuario.username)
+            .all()
+        )
+
     def marcar_baneado(self, miembro: Miembro) -> None:
         miembro.baneado = True
         self.db.flush()

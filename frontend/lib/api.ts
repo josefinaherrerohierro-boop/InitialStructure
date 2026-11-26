@@ -342,6 +342,19 @@ export const expulsarMiembro = (servidorId: number, usuarioId: number) =>
 export const banearMiembro = (servidorId: number, usuarioId: number) =>
   request<void>(`/servidores/${servidorId}/miembros/${usuarioId}/banear`, { method: 'POST' })
 
+export type Baneado = {
+  usuario_id: number
+  username: string
+  avatar_url: string | null
+  /** Cuándo lo banearon (null si fue antes de que existiera el historial). */
+  fecha_baneo: string | null
+}
+/** Lista de baneados (solo moderadores y el dueño). */
+export const getBaneados = (servidorId: number) => request<Baneado[]>(`/servidores/${servidorId}/baneados`)
+/** Saca el baneo. Para volver a entrar, la persona necesita una invitación nueva. */
+export const desbanearMiembro = (servidorId: number, usuarioId: number) =>
+  request<void>(`/servidores/${servidorId}/miembros/${usuarioId}/desbanear`, { method: 'POST' })
+
 // Invitaciones
 export const getInvitaciones = (servidorId: number) =>
   request<Invitacion[]>(`/servidores/${servidorId}/invitaciones`)
@@ -759,3 +772,22 @@ export const elegirMiFoto = (servidorId: number, fotoId: number | null) =>
   request<MiMembresia>(`/servidores/${servidorId}/mi-foto`, { method: 'PUT', body: { foto_id: fotoId } })
 export const ordenarMisSecciones = (servidorId: number, orden: string[], carpetas: Carpeta[] = []) =>
   request<MiMembresia>(`/servidores/${servidorId}/mi-orden`, { method: 'PUT', body: { orden, carpetas } })
+
+// ---------- Notificaciones ----------
+export type TipoNotificacion = 'mencion' | 'mensaje_directo' | 'solicitud_amistad' | 'amistad_aceptada' | 'tarea_asignada'
+export type Notificacion = {
+  id: number
+  tipo: TipoNotificacion
+  texto: string
+  actor: UsuarioResumen | null
+  servidor_id: number | null
+  canal_id: number | null
+  mensaje_id: number | null
+  leida: boolean
+  fecha: string
+}
+export type Notificaciones = { no_leidas: number; items: Notificacion[] }
+export const getNotificaciones = () => request<Notificaciones>('/notificaciones')
+/** Sin ids: marca todas como leídas. */
+export const leerNotificaciones = (ids?: number[]) =>
+  request<Notificaciones>('/notificaciones/leer', { method: 'POST', body: { ids: ids ?? null } })

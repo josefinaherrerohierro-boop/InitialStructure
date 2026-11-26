@@ -10,6 +10,7 @@ from src.repositories.usuario_repository import UsuarioRepository
 from src.services.amistad_service import AmistadService
 from src.services.archivo_service import ArchivoService
 from src.services.mensaje_service import MensajeService
+from src.services.notificacion_service import NotificacionService
 from src.utils.errors import ForbiddenError, NotFoundError, UnprocessableError
 
 
@@ -69,8 +70,9 @@ class MensajeDirectoService:
     ) -> list[MensajeDirectoResponseDTO]:
         otro = self._buscar_usuario_o_404(otro_id)
         yo = self.usuarios.find_by_id(actual_id)
-        # Al abrir la conversación, lo que me mandaron queda como leído.
+        # Al abrir la conversación, lo que me mandaron queda como leído (y su aviso también).
         self.mensajes.marcar_leidos(actual_id, otro.id)
+        NotificacionService(self.db).leer_directos_de(actual_id, otro.id)
         self.db.commit()
         autores = {otro.id: otro, yo.id: yo}
         return [
@@ -91,8 +93,10 @@ class MensajeDirectoService:
         adjunto = ArchivoService.validar_adjunto(dto.adjunto)
         contenido = MensajeService._validar_contenido(dto.contenido, permitir_vacio=adjunto is not None)
         mensaje = self.mensajes.create(actual_id, otro.id, contenido, adjunto)
+        yo = self.usuarios.find_by_id(actual_id)
+        NotificacionService(self.db).notificar_mensaje_directo(yo, otro.id, contenido)
         self.db.commit()
-        return to_mensaje_directo_response(mensaje, self.usuarios.find_by_id(actual_id))
+        return to_mensaje_directo_response(mensaje, yo)
 
     def editar(self, mensaje_id: int, contenido: str, actual_id: int) -> MensajeDirectoResponseDTO:
         mensaje = self._buscar_propio(mensaje_id, actual_id, "editar")

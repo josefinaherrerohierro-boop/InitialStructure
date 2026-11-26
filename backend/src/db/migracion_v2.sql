@@ -343,3 +343,21 @@ ALTER TABLE tareas ADD CONSTRAINT chk_tarea_puntos CHECK (puntos BETWEEN 0 AND 1
 
 -- Historial: roles que tenía cada persona al salir del servidor --------------
 ALTER TABLE historial_servidores ADD COLUMN IF NOT EXISTS roles TEXT;
+
+
+-- Notificaciones (menciones, mensajes privados, amistades y tareas) ----------
+CREATE TABLE IF NOT EXISTS notificaciones (
+    id           SERIAL PRIMARY KEY,
+    usuario_id   INTEGER      NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    tipo         VARCHAR(20)  NOT NULL,
+    actor_id     INTEGER      REFERENCES usuarios(id) ON DELETE SET NULL,
+    texto        VARCHAR(200) NOT NULL,
+    servidor_id  INTEGER      REFERENCES servidores(id) ON DELETE CASCADE,
+    canal_id     INTEGER      REFERENCES canales(id)    ON DELETE CASCADE,
+    mensaje_id   INTEGER      REFERENCES mensajes(id)   ON DELETE CASCADE,
+    leida        BOOLEAN      NOT NULL DEFAULT FALSE,
+    fecha        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_notificacion_tipo CHECK (tipo IN (
+        'mencion', 'mensaje_directo', 'solicitud_amistad', 'amistad_aceptada', 'tarea_asignada'))
+);
+CREATE INDEX IF NOT EXISTS idx_notificaciones_usuario ON notificaciones (usuario_id, leida, fecha);

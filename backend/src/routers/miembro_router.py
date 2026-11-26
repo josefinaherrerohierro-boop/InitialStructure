@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from src.db.connection import get_db
 from src.db.models.usuario_model import Usuario
-from src.dtos.miembro_dto import CarpetaDTO, MiembroResponseDTO, MiMembresiaDTO
+from src.dtos.miembro_dto import BaneadoDTO, CarpetaDTO, MiembroResponseDTO, MiMembresiaDTO
 from src.middlewares.auth_middleware import get_current_user
 from src.schemas.social_schema import ApodoSchema, MiFotoSchema, MiOrdenSchema
 from src.services.miembro_service import MiembroService
@@ -47,6 +47,30 @@ def banear_miembro(
     actual: Usuario = Depends(get_current_user),
 ):
     MiembroService(db).banear(servidor_id, usuario_id, actual.id)
+
+
+# Lista de baneados (solo moderadores y el dueño).
+@router.get("/servidores/{servidor_id}/baneados", response_model=list[BaneadoDTO])
+def listar_baneados(
+    servidor_id: int,
+    db: Session = Depends(get_db),
+    actual: Usuario = Depends(get_current_user),
+):
+    return MiembroService(db).list_baneados(servidor_id, actual.id)
+
+
+# Desbanear (moderador). Para volver a entrar necesita una invitación nueva.
+@router.post(
+    "/servidores/{servidor_id}/miembros/{usuario_id}/desbanear",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def desbanear_miembro(
+    servidor_id: int,
+    usuario_id: int,
+    db: Session = Depends(get_db),
+    actual: Usuario = Depends(get_current_user),
+):
+    MiembroService(db).desbanear(servidor_id, usuario_id, actual.id)
 
 
 # HU10 — Salir del servidor (el dueño primero tiene que transferirlo).

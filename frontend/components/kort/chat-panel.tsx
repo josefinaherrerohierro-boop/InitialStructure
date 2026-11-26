@@ -15,13 +15,14 @@ import {
   type Adjunto,
   type Canal,
   type Mensaje,
+  type Miembro,
   type Usuario,
   type UsuarioResumen,
 } from '@/lib/api'
 import { parseFecha } from '@/lib/kort'
 import type { Permisos } from '@/lib/kort'
 import { useToast } from './toast-provider'
-import { Composer } from './composer'
+import { Composer, type Mencionable } from './composer'
 import { CrearEncuestaModal } from './encuesta-modal'
 import { MessageItem } from './message-item'
 import { Avatar, Boton } from './ui'
@@ -58,6 +59,7 @@ function ChatVista({
   onEncuesta,
   itemProps,
   extra,
+  mencionables,
 }: {
   claveSWR: unknown[]
   cargar: (opciones: { limite: number; antes_de?: number }) => Promise<Mensaje[]>
@@ -71,6 +73,8 @@ function ChatVista({
   itemProps: (m: Mensaje) => Partial<React.ComponentProps<typeof MessageItem>>
   /** Para recibir la función que agrega un mensaje (lo usa el modal de encuestas). */
   extra?: (agregar: (m: Mensaje) => void) => React.ReactNode
+  /** Personas que se pueden mencionar con @. */
+  mencionables?: Mencionable[]
 }) {
   const toast = useToast()
   const [vistos, setVistos] = useState<Map<number, Mensaje>>(() => new Map())
@@ -225,7 +229,13 @@ function ChatVista({
       </div>
 
       {puedeEscribir ? (
-        <Composer destino={destino} onEnviar={enviar} onEnviado={alEnviar} onEncuesta={onEncuesta} />
+        <Composer
+          destino={destino}
+          onEnviar={enviar}
+          onEnviado={alEnviar}
+          onEncuesta={onEncuesta}
+          mencionables={mencionables}
+        />
       ) : (
         <div className="px-4 pb-4">
           <div className="flex items-center gap-2.5 rounded-xl border border-border bg-surface px-4 py-3.5 text-sm text-muted-foreground">
@@ -244,11 +254,14 @@ export function ChatPanel({
   canal,
   yo,
   permisos,
+  miembros,
   onVerPerfil,
 }: {
   canal: Canal
   yo: Usuario
   permisos: Permisos
+  /** Miembros del servidor: aparecen al escribir @ para mencionarlos. */
+  miembros?: Miembro[]
   onVerPerfil?: (usuarioId: number) => void
 }) {
   const [creandoEncuesta, setCreandoEncuesta] = useState(false)
@@ -274,6 +287,9 @@ export function ChatPanel({
       avisoSinPermiso={canal.solo_lectura ? 'Este canal es de solo lectura' : 'No tenés permiso para escribir'}
       enviar={(contenido, adjunto) => enviarMensaje(canal.id, contenido, adjunto)}
       onEncuesta={() => setCreandoEncuesta(true)}
+      mencionables={miembros
+        ?.filter((m) => m.usuario_id !== yo.id)
+        .map((m) => ({ username: m.username, apodo: m.apodo, avatar_url: m.avatar_url }))}
       itemProps={(m) => ({
         // Igual que el backend: el autor o un moderador (HU8).
         puedeBorrar: m.autor_id === yo.id || permisos.esModerador,

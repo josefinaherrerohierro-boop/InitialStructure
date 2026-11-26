@@ -37,7 +37,37 @@ function dominio(url: string): string {
   }
 }
 
-/** Texto del mensaje con los links clickeables. */
+/**
+ * @usuario dentro de un texto: letras, números, "_" y "." (sin terminar en
+ * punto). No cuenta si está pegado a otra palabra (ej: ana@mail.com).
+ * Es el mismo criterio que usa el backend para mandar el aviso.
+ */
+const PATRON_MENCION = /(^|[^\w.@])@([A-Za-z0-9_.]*[A-Za-z0-9_])/g
+
+/** Un pedazo de texto con las menciones (@usuario) resaltadas. */
+function ConMenciones({ texto }: { texto: string }) {
+  const nodos: React.ReactNode[] = []
+  let ultimo = 0
+  for (const m of texto.matchAll(PATRON_MENCION)) {
+    const inicio = (m.index ?? 0) + m[1].length // donde está la @
+    if (inicio > ultimo) nodos.push(texto.slice(ultimo, inicio))
+    const mencion = `@${m[2]}`
+    nodos.push(
+      <span
+        key={inicio}
+        className="rounded px-0.5 font-semibold"
+        style={{ backgroundColor: 'color-mix(in srgb, currentColor 15%, transparent)' }}
+      >
+        {mencion}
+      </span>,
+    )
+    ultimo = inicio + mencion.length
+  }
+  if (ultimo < texto.length) nodos.push(texto.slice(ultimo))
+  return <>{nodos}</>
+}
+
+/** Texto del mensaje con los links clickeables y las menciones (@usuario) resaltadas. */
 export function TextoConLinks({ texto }: { texto: string }) {
   const partes = texto.split(PATRON_LINK)
   return (
@@ -54,7 +84,9 @@ export function TextoConLinks({ texto }: { texto: string }) {
             {parte}
           </a>
         ) : (
-          <span key={i}>{parte}</span>
+          <span key={i}>
+            <ConMenciones texto={parte} />
+          </span>
         ),
       )}
     </>

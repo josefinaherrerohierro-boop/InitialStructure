@@ -17,6 +17,7 @@ from src.repositories.reaccion_repository import ReaccionRepository
 from src.repositories.usuario_repository import UsuarioRepository
 from src.services.archivo_service import ArchivoService
 from src.services.mensaje_respuestas import ArmadorDeMensajes
+from src.services.notificacion_service import NotificacionService
 from src.services.permisos_service import PermisosService
 from src.utils.errors import ConflictError, ForbiddenError, NotFoundError, UnprocessableError
 from src.utils.fechas import a_hora_local, ahora
@@ -58,6 +59,9 @@ class MensajeService:
             adjunto_tipo=adjunto.tipo if adjunto else None,
             adjunto_nombre=adjunto.nombre if adjunto else None,
         )
+        # Avisos para los que mencionó con @usuario (se guardan junto con el mensaje).
+        servidor = self.permisos.obtener_servidor(canal.servidor_id)
+        NotificacionService(self.db).notificar_menciones(mensaje, canal, servidor, self.usuarios.find_by_id(actual_id))
         self.db.commit()
         return self._respuesta(mensaje, canal, actual_id)
 
@@ -67,6 +71,9 @@ class MensajeService:
     ) -> list[MensajeResponseDTO]:
         canal = self._buscar_canal_o_404(canal_id)
         self.permisos.exigir_miembro(canal.servidor_id, actual_id)
+        # Si estoy mirando el canal, sus menciones a mí ya no hace falta avisarlas.
+        if antes_de is None and NotificacionService(self.db).leer_menciones_del_canal(actual_id, canal.id):
+            self.db.commit()
         filas = self.mensajes.list_by_canal(canal.id, limite=limite, antes_de=antes_de)
         return self.armador.armar(filas, canal.servidor_id, actual_id)
 

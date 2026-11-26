@@ -21,6 +21,7 @@ from src.repositories.miembro_repository import MiembroRepository
 from src.repositories.organizacion_repository import EventoRepository, PuntoRepository, TareaRepository
 from src.repositories.usuario_repository import UsuarioRepository
 from src.services.archivo_service import ArchivoService
+from src.services.notificacion_service import NotificacionService
 from src.services.permisos_service import PermisosService
 from src.utils.errors import ForbiddenError, NotFoundError, UnprocessableError
 from src.utils.fechas import a_hora_local, ahora
@@ -209,6 +210,7 @@ class TareaService:
             imagen_url=ArchivoService.validar_imagen(dto.imagen_url),
             puntos=puntos,
         )
+        self._avisar_asignacion(tarea, servidor, actual_id)
         self.db.commit()
         return self._dto(tarea)
 
@@ -261,6 +263,8 @@ class TareaService:
                 cambios["imagen_url"] = ArchivoService.validar_imagen(dto.imagen_url)
 
         self.tareas.update(tarea, **cambios)
+        if cambios.get("asignado_id"):
+            self._avisar_asignacion(tarea, servidor, actual_id)
         self.db.commit()
         return self._dto(tarea)
 
@@ -273,6 +277,13 @@ class TareaService:
         self.db.commit()
 
     # ---------- Ayudas internas ----------
+    def _avisar_asignacion(self, tarea: Tarea, servidor: Servidor, actual_id: int) -> None:
+        """Si alguien le asigna la tarea a OTRA persona, a esa persona le llega un aviso."""
+        if tarea.asignado_id and tarea.asignado_id != actual_id:
+            NotificacionService(self.db).notificar_tarea(
+                self.usuarios.find_by_id(actual_id), tarea.asignado_id, tarea.titulo, servidor
+            )
+
     def _otorgar_puntos(self, tarea: Tarea, actual_id: int) -> dict:
         """Al completar la tarea: le da sus puntos a la persona asignada (o, si
         no hay nadie asignado, a quien la completó). Solo si sigue siendo miembro."""

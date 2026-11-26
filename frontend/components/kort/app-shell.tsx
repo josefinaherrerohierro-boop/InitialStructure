@@ -20,6 +20,7 @@ import {
   getToken,
   mensajeDeError,
   ordenarServidores,
+  type Notificacion,
   type Servidor,
   type UsuarioResumen,
 } from '@/lib/api'
@@ -44,6 +45,7 @@ import { BarraServidor, type VistaServidor } from './barra-servidor'
 import { SeccionesServidor } from './secciones-servidor'
 import { ConfiguracionServidor } from './config/configuracion-servidor'
 import { ChatPanel, DirectoPanel } from './chat-panel'
+import { Notificaciones } from './notificaciones'
 import { EmptyState } from './empty-state'
 import { ExplorarView } from './explorar'
 import { EstadosBarra } from './estados'
@@ -233,6 +235,40 @@ function AppShellInterno() {
   function abrirDirecto(usuario: UsuarioResumen) {
     setPerfilAbierto(null)
     irAInicio({ tipo: 'dm', usuario })
+  }
+
+  /** Para las notificaciones: ir a un canal de cualquier servidor. */
+  function irACanal(servidorId: number, canalId: number | null) {
+    if (canalId) {
+      setCanalPorServidor((prev) => ({ ...prev, [servidorId]: canalId }))
+      setHerramientaPorServidor((prev) => ({ ...prev, [servidorId]: null }))
+    }
+    seleccionarServidor(servidorId)
+  }
+
+  /** Para las notificaciones: ir a una herramienta (por ejemplo, Tareas) de cualquier servidor. */
+  function irAHerramienta(servidorId: number, h: VistaServidor) {
+    setHerramientaPorServidor((prev) => ({ ...prev, [servidorId]: h }))
+    seleccionarServidor(servidorId)
+  }
+
+  /** ¿El aviso es de lo que estoy mirando ahora mismo? (entonces no suena) */
+  function estaMirando(n: Notificacion): boolean {
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return false
+    if (n.tipo === 'mencion') {
+      return !mostrarInicio && !enExplorar && !herramienta && servidor?.id === n.servidor_id && canal?.id === n.canal_id
+    }
+    if (n.tipo === 'mensaje_directo') {
+      return mostrarInicio && seleccionInicio.tipo === 'dm' && seleccionInicio.usuario.id === n.actor?.id
+    }
+    return false
+  }
+
+  function abrirNotificacion(n: Notificacion) {
+    if (n.tipo === 'mencion' && n.servidor_id) irACanal(n.servidor_id, n.canal_id)
+    else if (n.tipo === 'mensaje_directo' && n.actor) abrirDirecto(n.actor)
+    else if (n.tipo === 'tarea_asignada' && n.servidor_id) irAHerramienta(n.servidor_id, 'tareas')
+    else irAInicio({ tipo: 'amigos' })
   }
 
   function seleccionarCanal(id: number) {
@@ -553,7 +589,7 @@ function AppShellInterno() {
       canal.tipo === 'voz' ? (
         <VoicePanel canal={canal} yo={yo} voz={voz} ampliada={llamadaAmpliada} onAmpliar={setLlamadaAmpliada} />
       ) : (
-        <ChatPanel key={canal.id} canal={canal} yo={yo} permisos={permisos} onVerPerfil={setPerfilAbierto} />
+        <ChatPanel key={canal.id} canal={canal} yo={yo} permisos={permisos} miembros={miembros} onVerPerfil={setPerfilAbierto} />
       )
     ) : canales && canales.length === 0 ? (
       <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-muted-foreground">
@@ -597,6 +633,7 @@ function AppShellInterno() {
           />
         </div>
         <div className="flex-1 md:hidden" />
+        <Notificaciones activo={!!yo} estaMirando={estaMirando} onAbrir={abrirNotificacion} />
         <button
           type="button"
           onClick={() => cambiarPreferencias({ tema: modoOscuro ? 'kort' : 'oscuro' })}

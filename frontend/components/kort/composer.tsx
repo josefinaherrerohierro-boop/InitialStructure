@@ -13,8 +13,20 @@ import {
 import { cn } from '@/lib/utils'
 import { EmojiPicker } from './emoji-picker'
 import { useToast } from './toast-provider'
+import { Avatar } from './ui'
 
 const MAX = 2000
+const MAXIMO_SUGERENCIAS = 8
+
+/** Alguien que se puede mencionar con @ (los miembros del servidor). */
+export type Mencionable = { username: string; apodo?: string | null; avatar_url?: string | null }
+
+/** Si justo antes del cursor hay un "@algo" a medio escribir, devuelve dónde empieza y qué se escribió. */
+function mencionEnCurso(texto: string, cursor: number): { inicio: number; busqueda: string } | null {
+  const m = texto.slice(0, cursor).match(/(^|[^\w.@])@([A-Za-z0-9_.]{0,32})$/)
+  if (!m) return null
+  return { inicio: cursor - m[2].length - 1, busqueda: m[2].toLowerCase() }
+}
 
 function duracion(segundos: number): string {
   return `${Math.floor(segundos / 60)}:${String(segundos % 60).padStart(2, '0')}`
@@ -36,6 +48,7 @@ export function Composer({
   onEnviar,
   onEnviado,
   onEncuesta,
+  mencionables,
 }: {
   /** Texto del placeholder, ej: "#general" o "@ana". */
   destino: string
@@ -43,8 +56,13 @@ export function Composer({
   onEnviado: (m: Mensaje) => void
   /** Si se pasa, aparece el botón para crear una encuesta. */
   onEncuesta?: () => void
+  /** Personas que se pueden mencionar con @ (en los canales de un servidor). */
+  mencionables?: Mencionable[]
 }) {
   const [texto, setTexto] = useState('')
+  // Menciones: qué se está buscando después de la @ y qué opción está marcada.
+  const [mencion, setMencion] = useState<{ inicio: number; busqueda: string } | null>(null)
+  const [marcada, setMarcada] = useState(0)
   const [adjunto, setAdjunto] = useState<Adjunto | null>(null)
   const [subiendo, setSubiendo] = useState(false)
   const [enviando, setEnviando] = useState(false)
@@ -142,6 +160,43 @@ export function Composer({
     grabador.current?.stop()
   }
 
+  // ---------- Menciones con @ ----------
+  const sugerencias =
+    mencion && mencionables
+      ? mencionables
+          .filter(
+            (p) =>
+              p.username.toLowerCase().startsWith(mencion.busqueda) ||
+              (p.apodo ?? '').toLowerCase().includes(mencion.busqueda),
+          )
+          .slice(0, MAXIMO_SUGERENCIAS)
+      : []
+  const mostrarSugerencias = sugerencias.length > 0
+
+  /** Revisa si el cursor quedó después de una @ (se llama al escribir y al mover el cursor). */
+  function revisarMencion(el: HTMLTextAreaElement) {
+    if (!mencionables?.length) return
+    const nueva = mencionEnCurso(el.value, el.selectionStart ?? el.value.length)
+    if (nueva?.busqueda !== mencion?.busqueda || nueva?.inicio !== mencion?.inicio) setMarcada(0)
+    setMencion(nueva)
+  }
+
+  /** Reemplaza el "@algo" a medio escribir por "@usuario " y deja el cursor después. */
+  function elegirMencion(p: Mencionable) {
+    const el = ref.current
+    if (!mencion || !el) return
+    const cursor = el.selectionStart ?? texto.length
+    const insertado = `@${p.username} `
+    const nuevo = (texto.slice(0, mencion.inicio) + insertado + texto.slice(cursor)).slice(0, MAX)
+    setTexto(nuevo)
+    setMencion(null)
+    const posicion = Math.min(mencion.inicio + insertado.length, nuevo.length)
+    requestAnimationFrame(() => {
+      el.focus()
+      el.setSelectionRange(posicion, posicion)
+    })
+  }
+
   const restantes = MAX - texto.length
   const filas = Math.min(8, Math.max(1, texto.split('\n').length))
   const botonIcono =
@@ -153,8 +208,43 @@ export function Composer({
         e.preventDefault()
         enviar()
       }}
-      className="px-4 pb-4"
+      className="relative px-4 pb-4"
     >
+      {mostrarSugerencias && (
+        <div
+          role="listbox"
+          aria-label="Personas para mencionar"
+          className="panel aparecer-arriba absolute right-4 bottom-full left-4 z-20 mb-1 max-w-sm overflow-hidden p-1.5"
+        >
+          <p className="px-2 pt-1 pb-1.5 text-[11px] font-semibold text-muted-foreground">
+            Mencionar · ↑↓ para elegir, Enter o Tab para confirmar
+          </p>
+          {sugerencias.map((p, i) => (
+            <button
+              key={p.username}
+              type="button"
+              role="option"
+              aria-selected={i === marcada}
+              // mousedown (y no click) para que el textarea no pierda el foco antes de elegir.
+              onMouseDown={(e) => {
+                e.preventDefault()
+                elegirMencion(p)
+              }}
+              onMouseEnter={() => setMarcada(i)}
+              className={cn(
+                'flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left text-sm',
+                i === marcada ? 'bg-primary/12 text-foreground' : 'text-muted-foreground hover:bg-elevated',
+              )}
+            >
+              <Avatar nombre={p.username} url={p.avatar_url} tamanio="sm" />
+              <span className="min-w-0 flex-1 truncate">
+                <span className="font-medium text-foreground">{p.apodo || p.username}</span>
+                {p.apodo && <span className="ml-1.5 text-xs">@{p.username}</span>}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
       {adjunto && (
         <div className="mb-2 flex w-fit max-w-full items-center gap-3 rounded-xl border border-border bg-surface p-2 pr-3">
           {adjunto.tipo === 'imagen' ? (
@@ -244,8 +334,32 @@ export function Composer({
               value={texto}
               maxLength={MAX}
               rows={filas}
-              onChange={(e) => setTexto(e.target.value)}
+              onChange={(e) => {
+                setTexto(e.target.value)
+                revisarMencion(e.target)
+              }}
+              onSelect={(e) => revisarMencion(e.currentTarget)}
+              onBlur={() => setMencion(null)}
               onKeyDown={(e) => {
+                // Con la lista de menciones abierta, las flechas, Enter y Tab la manejan a ella.
+                if (mostrarSugerencias) {
+                  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                    e.preventDefault()
+                    const paso = e.key === 'ArrowDown' ? 1 : -1
+                    setMarcada((m) => (m + paso + sugerencias.length) % sugerencias.length)
+                    return
+                  }
+                  if ((e.key === 'Enter' && !e.shiftKey) || e.key === 'Tab') {
+                    e.preventDefault()
+                    elegirMencion(sugerencias[Math.min(marcada, sugerencias.length - 1)])
+                    return
+                  }
+                  if (e.key === 'Escape') {
+                    e.preventDefault()
+                    setMencion(null)
+                    return
+                  }
+                }
                 if (e.key === 'Enter' && !e.shiftKey) {
                   if (e.nativeEvent.isComposing || e.keyCode === 229) return
                   e.preventDefault()
@@ -302,6 +416,7 @@ export function Composer({
       </div>
       <p className="mt-1.5 px-1 text-[11px] text-muted-foreground">
         Enter para enviar · Shift+Enter para salto de línea · Podés pegar imágenes
+        {mencionables?.length ? ' · Escribí @ para mencionar a alguien' : ''}
       </p>
     </form>
   )

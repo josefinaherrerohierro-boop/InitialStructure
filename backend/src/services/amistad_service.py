@@ -6,6 +6,7 @@ from src.dtos.social_dto import AmigoDTO, SolicitudDTO, SolicitudesDTO
 from src.mappers.social_mapper import to_usuario_resumen
 from src.repositories.amistad_repository import AmistadRepository
 from src.repositories.usuario_repository import UsuarioRepository
+from src.services.notificacion_service import NotificacionService
 from src.utils.errors import ConflictError, ForbiddenError, NotFoundError, UnprocessableError
 from src.utils.fechas import ahora
 
@@ -64,11 +65,12 @@ class AmistadService:
                 raise ConflictError(f"Ya sos amigo de {otro.username}")
             if existente.solicitante_id == actual_id:
                 raise ConflictError(f"Ya le mandaste una solicitud a {otro.username}")
-            self._aceptar(existente)
+            self._aceptar(existente, actual_id)
             return "amigos"
 
         try:
             self.amistades.create(actual_id, otro.id)
+            NotificacionService(self.db).notificar_solicitud(self.usuarios.find_by_id(actual_id), otro.id)
             self.db.commit()
         except IntegrityError:
             self.db.rollback()
@@ -79,7 +81,7 @@ class AmistadService:
         solicitud = self._buscar_pendiente(solicitud_id)
         if solicitud.receptor_id != actual_id:
             raise ForbiddenError("Solo quien recibió la solicitud puede aceptarla")
-        self._aceptar(solicitud)
+        self._aceptar(solicitud, actual_id)
 
     def rechazar(self, solicitud_id: int, actual_id: int) -> None:
         """Rechazar una solicitud recibida o cancelar una enviada."""
@@ -97,8 +99,12 @@ class AmistadService:
         self.db.commit()
 
     # ---------- Ayudas internas ----------
-    def _aceptar(self, solicitud: Amistad) -> None:
+    def _aceptar(self, solicitud: Amistad, quien_acepta_id: int) -> None:
         self.amistades.update(solicitud, estado="aceptada", fecha_respuesta=ahora())
+        # Aviso para la otra persona: "Ahora sos amigo de ...".
+        NotificacionService(self.db).notificar_amistad_aceptada(
+            self.usuarios.find_by_id(quien_acepta_id), solicitud.otro(quien_acepta_id)
+        )
         self.db.commit()
 
     def _buscar_pendiente(self, solicitud_id: int) -> Amistad:

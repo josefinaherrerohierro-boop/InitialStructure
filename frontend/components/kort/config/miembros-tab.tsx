@@ -1,11 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { Ban, UserMinus, X } from 'lucide-react'
+import useSWR from 'swr'
+import { Ban, ShieldCheck, UserMinus, X } from 'lucide-react'
 import {
   asignarRol,
   banearMiembro,
+  desbanearMiembro,
   expulsarMiembro,
+  getBaneados,
+  type Baneado,
   mensajeDeError,
   quitarRol,
   type Miembro,
@@ -37,7 +41,12 @@ export function MiembrosTab({
 }) {
   const toast = useToast()
   const [accion, setAccion] = useState<{ tipo: 'expulsar' | 'banear'; miembro: Miembro } | null>(null)
+  const [desbaneando, setDesbaneando] = useState<Baneado | null>(null)
   const rolesAsignables = roles.filter((r) => r.nombre !== EVERYONE)
+  // La lista de baneados solo la ven (y la puede pedir) un moderador o el dueño.
+  const { data: baneados, mutate: mutateBaneados } = useSWR(permisos.esModerador ? ['baneados', servidorId] : null, () =>
+    getBaneados(servidorId),
+  )
 
   async function agregarRol(m: Miembro, rolId: number) {
     try {
@@ -58,6 +67,7 @@ export function MiembrosTab({
   }
 
   return (
+    <div className="flex flex-col gap-6">
     <Seccion
       titulo={`Miembros (${miembros.length})`}
       descripcion={
@@ -173,8 +183,60 @@ export function MiembrosTab({
               : `Expulsaste a ${accion.miembro.username}.`,
           )
           onActualizar()
+          if (accion.tipo === 'banear') mutateBaneados()
         }}
       />
     </Seccion>
+
+    {permisos.esModerador && (
+      <Seccion
+        titulo={`Baneados${baneados ? ` (${baneados.length})` : ''}`}
+        descripcion="Personas que no pueden volver a entrar. Si las desbaneás, pueden volver solo con una invitación nueva."
+      >
+        {!baneados ? (
+          <div className="h-16 animate-pulse rounded-xl bg-elevated" aria-hidden />
+        ) : baneados.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No hay nadie baneado.</p>
+        ) : (
+          <ul className="flex flex-col divide-y divide-border">
+            {baneados.map((b) => (
+              <li key={b.usuario_id} className="flex items-center gap-3 py-3">
+                <Avatar nombre={b.username} url={b.avatar_url} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{b.username}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {b.fecha_baneo ? `Baneado el ${formatoFecha.format(parseFecha(b.fecha_baneo))}` : 'Baneado'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDesbaneando(b)}
+                  className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs text-success hover:bg-success/15"
+                >
+                  <ShieldCheck className="size-3.5" aria-hidden />
+                  Desbanear
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <Confirmar
+          abierto={desbaneando !== null}
+          peligro={false}
+          titulo={`¿Desbanear a ${desbaneando?.username}?`}
+          descripcion="Va a poder volver al servidor, pero solo si alguien le manda una invitación nueva."
+          textoBoton="Desbanear"
+          onCerrar={() => setDesbaneando(null)}
+          onConfirmar={async () => {
+            if (!desbaneando) return
+            await desbanearMiembro(servidorId, desbaneando.usuario_id)
+            toast.exito(`Desbaneaste a ${desbaneando.username}.`)
+            mutateBaneados()
+          }}
+        />
+      </Seccion>
+    )}
+    </div>
   )
 }

@@ -63,6 +63,20 @@ class HistorialRepository:
             fila.roles = json.dumps(self.roles_actuales(fila.usuario_id, servidor), ensure_ascii=False)
         self.db.flush()
 
+    def fecha_baneo(self, usuario_id: int, servidor_id: int):
+        """Cuándo lo banearon de ese servidor (la última vez), o None si no hay registro."""
+        fila = (
+            self.db.query(HistorialServidor.fecha_salida)
+            .filter(
+                HistorialServidor.usuario_id == usuario_id,
+                HistorialServidor.servidor_id == servidor_id,
+                HistorialServidor.motivo_salida == "baneado",
+            )
+            .order_by(HistorialServidor.fecha_salida.desc())
+            .first()
+        )
+        return fila[0] if fila else None
+
     def list_de_usuario(self, usuario_id: int) -> list[tuple[HistorialServidor, Servidor | None]]:
         return (
             self.db.query(HistorialServidor, Servidor)

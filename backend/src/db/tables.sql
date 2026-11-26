@@ -9,6 +9,7 @@
 -- poder volver a correr el script desde cero. Se pierden los datos.
 -- =====================================================================
 
+DROP TABLE IF EXISTS notificaciones          CASCADE;
 DROP TABLE IF EXISTS directos_fijados        CASCADE;
 DROP TABLE IF EXISTS preferencias            CASCADE;
 DROP TABLE IF EXISTS puntos                  CASCADE;
@@ -431,3 +432,23 @@ CREATE TABLE IF NOT EXISTS directos_fijados (
     PRIMARY KEY (usuario_id, otro_id),
     CONSTRAINT chk_fijado_distinto CHECK (usuario_id <> otro_id)
 );
+
+
+-- 22. Notificaciones: avisos para cada usuario (lo mencionaron con @, le
+-- escribieron por privado, le mandaron una solicitud de amistad, le
+-- asignaron una tarea...). El texto se guarda ya armado.
+CREATE TABLE IF NOT EXISTS notificaciones (
+    id           SERIAL PRIMARY KEY,
+    usuario_id   INTEGER      NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    tipo         VARCHAR(20)  NOT NULL,
+    actor_id     INTEGER      REFERENCES usuarios(id) ON DELETE SET NULL,
+    texto        VARCHAR(200) NOT NULL,
+    servidor_id  INTEGER      REFERENCES servidores(id) ON DELETE CASCADE,
+    canal_id     INTEGER      REFERENCES canales(id)    ON DELETE CASCADE,
+    mensaje_id   INTEGER      REFERENCES mensajes(id)   ON DELETE CASCADE,
+    leida        BOOLEAN      NOT NULL DEFAULT FALSE,
+    fecha        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_notificacion_tipo CHECK (tipo IN (
+        'mencion', 'mensaje_directo', 'solicitud_amistad', 'amistad_aceptada', 'tarea_asignada'))
+);
+CREATE INDEX IF NOT EXISTS idx_notificaciones_usuario ON notificaciones (usuario_id, leida, fecha);

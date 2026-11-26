@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from src.db.models.miembro_model import Miembro
 from src.db.models.servidor_model import Servidor
-from src.dtos.miembro_dto import CarpetaDTO, MiembroResponseDTO, MiMembresiaDTO
+from src.dtos.miembro_dto import BaneadoDTO, CarpetaDTO, MiembroResponseDTO, MiMembresiaDTO
 from src.mappers.miembro_mapper import to_miembro_response
 from src.repositories.historial_repository import HistorialRepository
 from src.repositories.miembro_repository import MiembroRepository
@@ -60,6 +60,32 @@ class MiembroService:
         self.historial.cerrar(usuario_id, servidor, "baneado")  # antes de quitarle los roles
         self.roles.quitar_todos_en_servidor(usuario_id, servidor.id)
         self.miembros.marcar_baneado(miembro)
+        self.db.commit()
+
+    # ---------- Lista de baneados y desbanear ----------
+    def list_baneados(self, servidor_id: int, actual_id: int) -> list[BaneadoDTO]:
+        """Solo la ven los moderadores y el dueño."""
+        servidor = self.permisos.obtener_servidor(servidor_id)
+        self.permisos.exigir_moderador(servidor, actual_id)
+        return [
+            BaneadoDTO(
+                usuario_id=usuario.id,
+                username=usuario.username,
+                avatar_url=usuario.avatar_url,
+                fecha_baneo=self.historial.fecha_baneo(usuario.id, servidor.id),
+            )
+            for _, usuario in self.miembros.list_baneados(servidor.id)
+        ]
+
+    def desbanear(self, servidor_id: int, usuario_id: int, actual_id: int) -> None:
+        """Le saca el baneo: se borra su fila de miembros. NO vuelve a entrar solo:
+        si quiere volver, necesita una invitación nueva (igual que alguien expulsado)."""
+        servidor = self.permisos.obtener_servidor(servidor_id)
+        self.permisos.exigir_moderador(servidor, actual_id)
+        miembro = self.miembros.find(usuario_id, servidor.id)
+        if miembro is None or not miembro.baneado:
+            raise NotFoundError("Ese usuario no está baneado de este servidor")
+        self.miembros.delete(miembro)
         self.db.commit()
 
     # ---------- HU10: salir del servidor ----------

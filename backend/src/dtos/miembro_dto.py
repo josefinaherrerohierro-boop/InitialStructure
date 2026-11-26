@@ -33,3 +33,12 @@ class MiembroResponseDTO(BaseModel):
     fecha_union: datetime
     es_duenio: bool
     roles: list[RolResumenDTO]
+
+
+class BaneadoDTO(BaseModel):
+    """Alguien baneado de un servidor (para la lista de baneados)."""
+
+    usuario_id: int
+    username: str
+    avatar_url: str | None = None
+    fecha_baneo: datetime | None = None  # None si se baneó antes de que existiera el historial

@@ -211,7 +211,14 @@ export function VoicePanel({
               {resto.map((t) => renderTarjeta(t))}
             </div>
           ))}
-        {pestania === 'pizarra' && <Pizarra trazos={voz.trazos} onTrazo={voz.dibujar} onLimpiar={voz.limpiarPizarra} />}
+        {pestania === 'pizarra' && <Pizarra
+            trazos={voz.trazos}
+            miId={yo.id}
+            nombreCanal={canal.nombre}
+            onTrazo={voz.dibujar}
+            onDeshacer={() => voz.deshacerPizarra(yo.id)}
+            onLimpiar={voz.limpiarPizarra}
+          />}
         {pestania === 'juegos' && <JuegosLlamada voz={voz} miId={yo.id} />}
 
         <div className="flex flex-col items-center gap-3 border-t border-border p-4">

@@ -29,7 +29,30 @@ const CONFIG_RTC: RTCConfiguration = { iceServers: [{ urls: 'stun:stun.l.google.
 const UMBRAL_HABLANDO = 0.02 // volumen a partir del cual consideramos que alguien habla
 
 export type EstadoVoz = 'desconectado' | 'conectando' | 'conectado'
-export type Trazo = { puntos: [number, number][]; color: string; grosor: number; borrador?: boolean }
+/** Un elemento de la pizarra. Las posiciones van de 0 a 1 (se ve igual en cualquier pantalla). */
+export type TipoTrazo = 'lapiz' | 'linea' | 'flecha' | 'rect' | 'elipse' | 'texto' | 'imagen'
+export type Trazo = {
+  /** lapiz (por defecto): a mano alzada · linea/flecha/rect/elipse/imagen: inicio y fin · texto: un punto */
+  tipo?: TipoTrazo
+  puntos: [number, number][]
+  color: string
+  grosor: number
+  borrador?: boolean
+  relleno?: boolean
+  texto?: string
+  /** imagen subida a Kort (/uploads/...) */
+  url?: string
+  /** quién lo dibujó (para deshacer solo lo propio) */
+  autor?: number
+}
+
+/** Saca el último elemento de esa persona. */
+function sinUltimoDe(trazos: Trazo[], autor: number): Trazo[] {
+  for (let i = trazos.length - 1; i >= 0; i--) {
+    if (trazos[i].autor === autor) return [...trazos.slice(0, i), ...trazos.slice(i + 1)]
+  }
+  return trazos
+}
 export type VideosDe = { camara?: MediaStream; pantalla?: MediaStream }
 
 export type JugadorJuego = { usuario_id: number; username: string }
@@ -353,6 +376,7 @@ export function useVoz() {
             break
           case 'pizarra':
             if (msg.accion === 'trazo') setTrazos((prev) => [...prev, msg.trazo])
+            if (msg.accion === 'deshacer') setTrazos((prev) => sinUltimoDe(prev, msg.por))
             if (msg.accion === 'limpiar') setTrazos([])
             break
           case 'juego':
@@ -468,6 +492,14 @@ export function useVoz() {
     [enviar],
   )
   const limpiarPizarra = useCallback(() => enviar({ tipo: 'pizarra', accion: 'limpiar' }), [enviar])
+  /** Deshace lo último que dibujé yo (el servidor hace lo mismo y avisa a los demás). */
+  const deshacerPizarra = useCallback(
+    (miId: number) => {
+      setTrazos((prev) => sinUltimoDe(prev, miId))
+      enviar({ tipo: 'pizarra', accion: 'deshacer' })
+    },
+    [enviar],
+  )
 
   // ---------- juegos ----------
   const accionJuego = useCallback(
@@ -492,6 +524,7 @@ export function useVoz() {
     pantallaLocal,
     videos,
     trazos,
+    deshacerPizarra,
     juego,
     avisoJuego,
     entrar,

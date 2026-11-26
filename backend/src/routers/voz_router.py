@@ -28,7 +28,8 @@ def participantes_de_voz(
 # Mensajes que manda el navegador:
 #   {"tipo": "senal", "para": <usuario_id>, "datos": {...}}   oferta / respuesta / candidato ICE
 #   {"tipo": "estado", "silenciado": bool, "camara": bool, "pantalla": bool}
-#   {"tipo": "pizarra", "accion": "trazo", "trazo": {...}} o {"accion": "limpiar"}
+#   {"tipo": "pizarra", "accion": "trazo", "trazo": {...}}, {"accion": "deshacer"} o {"accion": "limpiar"}
+#     (un trazo puede ser lápiz, línea, flecha, rectángulo, elipse, texto o imagen)
 #   {"tipo": "juego", "accion": "crear" | "unirse" | "jugar" | "cancelar", ...}
 # Mensajes que manda el servidor:
 #   bienvenida, entro, salio, senal, estado, pizarra, juego, juego_error, error

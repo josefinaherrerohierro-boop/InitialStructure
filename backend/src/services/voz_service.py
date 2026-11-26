@@ -28,10 +28,11 @@ from src.db.models.usuario_model import Usuario
 from src.dtos.voz_dto import ParticipanteVozDTO
 from src.repositories.canal_repository import CanalRepository
 from src.repositories.usuario_repository import UsuarioRepository
+from src.services.archivo_service import ArchivoService
 from src.services.juegos_service import NOMBRES, PUNTOS_POR_GANAR, Juego, JugadaInvalida, crear_juego
 from src.services.organizacion_service import ScoreboardService
 from src.services.permisos_service import PermisosService
-from src.utils.errors import NotFoundError, UnauthorizedError, UnprocessableError
+from src.utils.errors import AppError, NotFoundError, UnauthorizedError, UnprocessableError
 from src.utils.jwt import decode_token
 
 log = logging.getLogger("kort")
@@ -67,25 +68,58 @@ class Sala:
     juego: Juego | None = None
 
 
+TIPOS_DE_TRAZO = ("lapiz", "linea", "flecha", "rect", "elipse", "texto", "imagen")
+MAXIMO_TEXTO = 500
+
+
 def _trazo_valido(trazo) -> dict | None:
-    """Un trazo es una línea: lista de puntos (x, y entre 0 y 1), color y grosor."""
+    """Un elemento de la pizarra. Las posiciones van de 0 a 1 (así se ve igual en
+    cualquier pantalla). Tipos:
+    - lapiz: una línea a mano alzada (muchos puntos). También la goma (borrador).
+    - linea, flecha, rect, elipse: dos puntos (inicio y fin); rect y elipse pueden ir rellenas.
+    - texto: un punto (arriba a la izquierda) y el texto; el grosor marca el tamaño.
+    - imagen: dos puntos (el rectángulo que ocupa) y la URL de una imagen subida a Kort.
+    """
     if not isinstance(trazo, dict):
         return None
+    tipo = trazo.get("tipo") or "lapiz"
     puntos = trazo.get("puntos")
     color = trazo.get("color")
     grosor = trazo.get("grosor")
-    if not isinstance(puntos, list) or not 1 <= len(puntos) <= MAXIMO_PUNTOS_POR_TRAZO:
+    if tipo not in TIPOS_DE_TRAZO:
+        return None
+    cantidad = {"lapiz": (1, MAXIMO_PUNTOS_POR_TRAZO), "texto": (1, 1)}.get(tipo, (2, 2))
+    if not isinstance(puntos, list) or not cantidad[0] <= len(puntos) <= cantidad[1]:
         return None
     limpios = []
     for p in puntos:
-        if not (isinstance(p, list) and len(p) == 2 and all(isinstance(v, (int, float)) for v in p)):
+        if not (isinstance(p, list) and len(p) == 2 and all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in p)):
             return None
         limpios.append([min(max(float(p[0]), 0.0), 1.0), min(max(float(p[1]), 0.0), 1.0)])
     if not (isinstance(color, str) and len(color) == 7 and color.startswith("#")):
         return None
-    if not isinstance(grosor, (int, float)) or not 1 <= grosor <= 40:
+    if not isinstance(grosor, (int, float)) or isinstance(grosor, bool) or not 1 <= grosor <= 40:
         return None
-    return {"puntos": limpios, "color": color, "grosor": grosor, "borrador": bool(trazo.get("borrador"))}
+    limpio = {"tipo": tipo, "puntos": limpios, "color": color, "grosor": grosor}
+    if tipo == "lapiz":
+        limpio["borrador"] = bool(trazo.get("borrador"))
+    elif tipo in ("rect", "elipse"):
+        limpio["relleno"] = bool(trazo.get("relleno"))
+    elif tipo == "texto":
+        texto = trazo.get("texto")
+        if not isinstance(texto, str) or not texto.strip():
+            return None
+        limpio["texto"] = texto[:MAXIMO_TEXTO]
+    elif tipo == "imagen":
+        url = trazo.get("url")
+        if not isinstance(url, str) or len(url) > 255:
+            return None
+        try:
+            ArchivoService.validar_imagen(url)  # solo imágenes subidas a Kort
+        except AppError:
+            return None
+        limpio["url"] = url
+    return limpio
 
 
 def _otorgar_puntos(servidor_id: int, usuario_id: int, cantidad: int, motivo: str) -> None:
@@ -186,9 +220,20 @@ class SalasDeVoz:
             trazo = _trazo_valido(mensaje.get("trazo"))
             if trazo is None:
                 return
+            trazo["autor"] = usuario_id  # para poder deshacer lo propio
             sala.trazos.append(trazo)
             del sala.trazos[:-MAXIMO_TRAZOS]  # nos quedamos con los últimos
             await self._difundir(canal_id, {"tipo": "pizarra", "accion": "trazo", "trazo": trazo}, excepto=usuario_id)
+        elif accion == "deshacer":
+            # Saca lo último que dibujó ESA persona (no lo de los demás).
+            for i in range(len(sala.trazos) - 1, -1, -1):
+                if sala.trazos[i].get("autor") == usuario_id:
+                    del sala.trazos[i]
+                    # A quien deshizo no se le avisa: ya lo sacó de su pizarra.
+                    await self._difundir(
+                        canal_id, {"tipo": "pizarra", "accion": "deshacer", "por": usuario_id}, excepto=usuario_id
+                    )
+                    break
         elif accion == "limpiar":
             sala.trazos.clear()
             await self._difundir(canal_id, {"tipo": "pizarra", "accion": "limpiar", "por": usuario_id})

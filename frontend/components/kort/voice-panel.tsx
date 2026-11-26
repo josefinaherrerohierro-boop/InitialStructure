@@ -122,7 +122,8 @@ export function VoicePanel({
               stream={t.stream}
               espejo={t.esYo && t.tipo === 'camara'}
               // object-contain: la imagen entera, sin deformarse ni recortarse (bandas negras si hace falta).
-              className={t.tipo === 'pantalla' || grande ? 'object-contain' : undefined}
+              // absolute inset-0: el video ocupa justo su recuadro, sin importar lo grande que sea la pantalla original.
+              className={cn((t.tipo === 'pantalla' || grande) && 'object-contain', grande && 'absolute inset-0')}
             />
           ) : (
             <Avatar nombre={t.participante.username} tamanio={grande ? 'xl' : 'lg'} />

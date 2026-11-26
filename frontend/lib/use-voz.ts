@@ -60,6 +60,26 @@ function lugaresDeVideo(pc: RTCPeerConnection): RTCRtpTransceiver[] {
   return pc.getTransceivers().filter((t) => t.receiver.track?.kind === 'video')
 }
 
+/**
+ * Pone la pista de la pantalla en su lugar y le pide al navegador que, si la
+ * conexión no da, baje los cuadros por segundo pero NUNCA la resolución: así
+ * la pantalla compartida llega nítida y con sus proporciones.
+ */
+function ponerPantalla(sender: RTCRtpSender, pista: MediaStreamTrack | null) {
+  sender
+    .replaceTrack(pista)
+    .then(() => {
+      if (!pista) return
+      const parametros = sender.getParameters()
+      if (!parametros.encodings?.length) return // todavía sin negociar: queda lo que diga el navegador
+      parametros.degradationPreference = 'maintain-resolution'
+      parametros.encodings[0].maxBitrate = 2_500_000
+      parametros.encodings[0].scaleResolutionDownBy = 1
+      return sender.setParameters(parametros)
+    })
+    .catch(() => {})
+}
+
 export function useVoz() {
   const [canal, setCanal] = useState<{ id: number; nombre: string } | null>(null)
   const [estado, setEstado] = useState<EstadoVoz>('desconectado')
@@ -170,7 +190,7 @@ export function useVoz() {
   const ponerVideos = useCallback((pc: RTCPeerConnection) => {
     const [lugarCamara, lugarPantalla] = lugaresDeVideo(pc)
     lugarCamara?.sender.replaceTrack(pistaCamara.current).catch(() => {})
-    lugarPantalla?.sender.replaceTrack(pistaPantalla.current).catch(() => {})
+    if (lugarPantalla) ponerPantalla(lugarPantalla.sender, pistaPantalla.current)
   }, [])
 
   // ---------- conexión con otro participante ----------
@@ -205,6 +225,13 @@ export function useVoz() {
           const tipo = lugaresDeVideo(pc).indexOf(e.transceiver) === 1 ? 'pantalla' : 'camara'
           const stream = new MediaStream([e.track])
           setVideos((prev) => ({ ...prev, [usuarioId]: { ...prev[usuarioId], [tipo]: stream } }))
+        }
+      }
+      // Recién al conectarse se pueden ajustar los parámetros de envío de la pantalla.
+      pc.onconnectionstatechange = () => {
+        const lugarPantalla = lugaresDeVideo(pc)[1]
+        if (pc.connectionState === 'connected' && lugarPantalla && pistaPantalla.current) {
+          ponerPantalla(lugarPantalla.sender, pistaPantalla.current)
         }
       }
       peers.current.set(usuarioId, pc)
@@ -365,7 +392,10 @@ export function useVoz() {
   /** Pone (o saca) una pista de video en el lugar indicado de todas las conexiones. */
   const repartirVideo = useCallback((lugar: 0 | 1, pista: MediaStreamTrack | null) => {
     peers.current.forEach((pc) => {
-      lugaresDeVideo(pc)[lugar]?.sender.replaceTrack(pista).catch(() => {})
+      const lugarDeVideo = lugaresDeVideo(pc)[lugar]
+      if (!lugarDeVideo) return
+      if (lugar === 1) ponerPantalla(lugarDeVideo.sender, pista)
+      else lugarDeVideo.sender.replaceTrack(pista).catch(() => {})
     })
   }, [])
 
@@ -408,8 +438,14 @@ export function useVoz() {
       return
     }
     try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false })
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 15, max: 30 } },
+        audio: false,
+      })
       const pista = stream.getVideoTracks()[0]
+      // "detail": la pantalla tiene texto, así que el navegador prefiere bajar los
+      // cuadros por segundo antes que la resolución (si no, se ve borrosa y deformada).
+      if ('contentHint' in pista) pista.contentHint = 'detail'
       // Si se deja de compartir desde el botón del navegador, avisamos igual.
       pista.onended = () => {
         if (pistaPantalla.current === pista) dejarDeCompartir()

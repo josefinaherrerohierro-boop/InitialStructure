@@ -6,7 +6,6 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
 from src.config.env import ORIGENES_DE_PRUEBA, settings
 from src.db.connection import SessionLocal
@@ -28,6 +27,7 @@ from src.routers import (
     publicacion_router,
     rol_router,
     servidor_router,
+    uploads_router,
     usuario_router,
     voz_router,
 )
@@ -114,9 +114,10 @@ app.include_router(notificacion_router.router, prefix="/api")
 # app.include_router(product_router.router, prefix="/api")
 
 
-# Archivos subidos por los usuarios (imágenes, audios, videos...): /uploads/<nombre>
+# Archivos subidos por los usuarios (imágenes, audios, videos...): /uploads/<nombre>.
+# Se sirven con un router propio que entiende "Range" (para poder adelantar los videos).
 CARPETA_UPLOADS.mkdir(parents=True, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=CARPETA_UPLOADS), name="uploads")
+app.include_router(uploads_router.router)
 
 
 @app.get("/health")

@@ -6,6 +6,8 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // Para probar la app desde otros dispositivos con los túneles de VS Code.
+  allowedDevOrigins: ['*.devtunnels.ms'],
 }
 
 export default nextConfig

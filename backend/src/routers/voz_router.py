@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
 
-from src.config.env import settings
+from src.config.env import origen_permitido
 from src.db.connection import SessionLocal, get_db
 from src.db.models.usuario_model import Usuario
 from src.dtos.voz_dto import ParticipanteVozDTO
@@ -51,8 +51,7 @@ def llamadas_entrantes(actual: Usuario = Depends(get_current_user)):
 
 async def _origen_permitido(websocket: WebSocket) -> bool:
     # CORS no se aplica a los WebSockets: revisamos a mano que venga de nuestro frontend.
-    origen = websocket.headers.get("origin")
-    if origen and origen != settings.FRONTEND_URL:
+    if not origen_permitido(websocket.headers.get("origin")):
         await websocket.send_json({"tipo": "error", "mensaje": "Origen no permitido"})
         await websocket.close(code=4403)
         return False

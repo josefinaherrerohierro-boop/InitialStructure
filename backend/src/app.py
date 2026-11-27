@@ -8,7 +8,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from src.config.env import settings
+from src.config.env import ORIGENES_DE_PRUEBA, settings
 from src.db.connection import SessionLocal
 from src.middlewares.error_middleware import app_error_handler, validation_error_handler
 from src.routers import (
@@ -81,7 +81,9 @@ async def errores_inesperados(request: Request, call_next):
 # desde el navegador. Sin esto, el navegador bloquea las peticiones.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.FRONTEND_URL],
+    allow_origins=[settings.FRONTEND_URL.rstrip("/")],
+    # También localhost y los túneles de VS Code (ver config/env.py).
+    allow_origin_regex=ORIGENES_DE_PRUEBA,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
